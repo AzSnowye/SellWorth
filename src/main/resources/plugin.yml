@@ -1,0 +1,39 @@
+name: ${project.name}
+version: '${project.version}'
+main: ${plugin.main}
+author: ${plugin.author}
+api-version: '${plugin.api}'
+description: ${project.description}
+
+softdepend:
+  - ProtocolLib
+  - Vault
+  - PlaceholderAPI
+
+commands:
+  sell:
+    usage: /sell
+    permission: sell.use
+  sellwand:
+    usage: /sellwand givesellwand <player> [time]
+    permission: sell.admin
+  worth:
+    usage: /worth [item] [amount]
+    permission: sell.use
+  sellhistory:
+    usage: /sellhistory
+    permission: sell.use
+  sellmulti:
+    usage: /sellmulti
+    permission: sell.use
+  toggleworth:
+    usage: /toggleworth
+    permission: sell.use
+
+permissions:
+  sell.use:
+    description: Allows players to use all functions.
+    default: true
+  sell.admin:
+    description: Admin commands for SellWorth.
+    default: op
