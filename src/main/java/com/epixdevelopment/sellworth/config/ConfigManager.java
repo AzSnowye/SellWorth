@@ -1697,8 +1697,7 @@ categories:
                 String combinedConfig = defaultConfig + defaultConfigPart2;
                 
                 Files.write(configFile.toPath(), combinedConfig.getBytes());
-                plugin.getLogger().info("Created new config file. Please edit it and restart the server.");
-                plugin.getServer().getPluginManager().disablePlugin(plugin);
+                plugin.getLogger().info("Created new config file. Using default settings.");
             } catch (IOException e) {
                 plugin.getLogger().severe("Could not create config file: " + e.getMessage());
             }

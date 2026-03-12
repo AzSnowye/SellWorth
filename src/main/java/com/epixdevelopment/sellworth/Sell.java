@@ -35,6 +35,7 @@ import com.epixdevelopment.sellworth.storage.YamlSellDataStore;
 import me.clip.placeholderapi.PlaceholderAPI;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -59,6 +60,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.CreatureSpawner;
@@ -136,6 +138,47 @@ public final class Sell extends JavaPlugin implements Listener {
    private static final int NOTIFICATION_FADE_IN = 5;    // 0.25 seconds
    private static final int NOTIFICATION_STAY = 40;      // 2 seconds
    private static final int NOTIFICATION_FADE_OUT = 10;  // 0.5 seconds
+
+
+   public Sound resolveSound(String raw, Sound fallback) {
+      if (raw == null || raw.isEmpty()) {
+         return fallback;
+      }
+
+      String normalized = raw.trim();
+      if (normalized.isEmpty()) {
+         return fallback;
+      }
+
+      String upper = normalized.toUpperCase(Locale.ROOT);
+
+      // Legacy Bukkit (Sound was an enum) - invoke reflectively to keep 1.21+ compiling.
+      try {
+         Method valueOf = Sound.class.getMethod("valueOf", String.class);
+         Object out = valueOf.invoke(null, upper);
+         if (out instanceof Sound) {
+            return (Sound)out;
+         }
+      } catch (Throwable ignored) {
+      }
+
+      // Modern Bukkit/Paper (Sound is registry-backed)
+      try {
+         String key = normalized.toLowerCase(Locale.ROOT);
+         if (key.startsWith("minecraft:")) {
+            key = key.substring("minecraft:".length());
+         }
+         key = key.replace('_', '.');
+
+         Sound reg = Registry.SOUNDS.get(NamespacedKey.minecraft(key));
+         if (reg != null) {
+            return reg;
+         }
+      } catch (Throwable ignored) {
+      }
+
+      return fallback;
+   }
 
 
    private void submitStorageTask(Runnable task) {
@@ -1029,7 +1072,7 @@ public final class Sell extends JavaPlugin implements Listener {
                disabledSet.add(declineMsg.toUpperCase(Locale.ROOT));
             }
 
-            Sound declineSound = Sound.valueOf(this.getConfig().getString("sounds.declined", "ENTITY_VILLAGER_NO"));
+            Sound declineSound = this.resolveSound(this.getConfig().getString("sounds.declined", "ENTITY_VILLAGER_NO"), Sound.ENTITY_VILLAGER_NO);
             declineMsg = Utils.formatColors(this.getConfig().getString("messages.cannot-sell", "&cYou cannot sell that item!"));
             Map<String, Sell.Stats> sold = new HashMap();
             Map<String, Double> revCats = new HashMap();
@@ -1281,8 +1324,14 @@ public final class Sell extends JavaPlugin implements Listener {
                   }).sum();
                }
 
-               this.getEconomy().depositPlayer(p, payout);
-               Sound soundOnClose = Sound.valueOf(this.getConfig().getString("sell-menu.sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP"));
+               Economy economy = this.getEconomy();
+               if (economy != null) {
+                  economy.depositPlayer(p, payout);
+               } else {
+                  this.getLogger().warning("Economy provider not available; skipping payout for " + p.getName() + " ($" + payout + ")");
+               }
+
+               Sound soundOnClose = this.resolveSound(this.getConfig().getString("sell-menu.sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP"), Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
                p.playSound(p.getLocation(), soundOnClose, 1.0F, 1.0F);
                long itemsSold = Math.round(sold.values().stream().mapToDouble((s) -> {
                   return s.count;

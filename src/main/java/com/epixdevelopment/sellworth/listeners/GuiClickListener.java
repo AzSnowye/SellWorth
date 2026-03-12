@@ -106,14 +106,10 @@ public class GuiClickListener implements Listener {
    private void playClickSound(Player p, FileConfiguration cfg) {
       String raw = cfg.getString("sounds.click-sound", "UI_BUTTON_CLICK");
 
-      Sound snd;
-      try {
-         snd = Sound.valueOf(raw.toUpperCase());
-      } catch (Exception var6) {
+      Sound snd = this.plugin.resolveSound(raw, Sound.UI_BUTTON_CLICK);
+      if (snd == Sound.UI_BUTTON_CLICK && raw != null && !raw.equalsIgnoreCase("UI_BUTTON_CLICK")) {
          this.plugin.getLogger().warning("Invalid sounds.click-sound: '" + raw + "'. Using UI_BUTTON_CLICK instead.");
-         snd = Sound.UI_BUTTON_CLICK;
       }
-
       p.playSound(p.getLocation(), snd, 1.0F, 1.0F);
    }
 }

@@ -35,7 +35,7 @@ public class InventoryClickListener implements Listener {
             Inventory top = e.getView().getTopInventory();
             if (e.getClickedInventory() == top) {
                e.setCancelled(true);
-               Sound clickSound = Sound.valueOf(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"));
+               Sound clickSound = this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK);
                p.playSound(p.getLocation(), clickSound, 1.0F, 1.0F);
                int slot = e.getRawSlot();
                int page = vt.getPage(uuid);
@@ -95,7 +95,7 @@ public class InventoryClickListener implements Listener {
             } while(raw < 0 || raw >= size);
 
             e.setCancelled(true);
-            Sound clickSound = Sound.valueOf(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"));
+            Sound clickSound = this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK);
             p.playSound(p.getLocation(), clickSound, 1.0F, 1.0F);
          }
       }

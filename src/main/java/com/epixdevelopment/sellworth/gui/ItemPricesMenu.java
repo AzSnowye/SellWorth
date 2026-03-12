@@ -436,12 +436,8 @@ public class ItemPricesMenu implements Listener {
       player.openInventory(inv);
       vt.setPage(player.getUniqueId(), page);
 
-      try {
-         Sound sound = Sound.valueOf(this.pageSwitchSoundName);
-         player.playSound(player.getLocation(), sound, 1.0F, 1.0F);
-      } catch (IllegalArgumentException var22) {
-         player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1.0F, 1.0F);
-      }
+      Sound sound = this.plugin.resolveSound(this.pageSwitchSoundName, Sound.ITEM_BOOK_PAGE_TURN);
+      player.playSound(player.getLocation(), sound, 1.0F, 1.0F);
 
    }
 

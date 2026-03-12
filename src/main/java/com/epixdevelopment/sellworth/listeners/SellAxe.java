@@ -178,8 +178,13 @@ public class SellAxe implements Listener {
                                .sum();
                            payout += uncategorized;
 
-                           this.plugin.getEconomy().depositPlayer(player, payout);
-                           player.playSound(player.getLocation(), Sound.valueOf(this.plugin.getConfig().getString("sell-menu.sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP")), 1.0F, 1.0F);
+                           if (this.plugin.getEconomy() != null) {
+                              this.plugin.getEconomy().depositPlayer(player, payout);
+                           } else {
+                              this.plugin.getLogger().warning("Economy provider not available; skipping payout for " + player.getName() + " ($" + payout + ")");
+                           }
+                           Sound closeSound = this.plugin.resolveSound(this.plugin.getConfig().getString("sell-menu.sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP"), Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+                           player.playSound(player.getLocation(), closeSound, 1.0F, 1.0F);
                            String actionbar = Utils.formatColors(this.plugin.getConfig().getString("sell-menu.actionbar-message", "&aSold $%amount%"))
                                .replace("%amount%", Utils.abbreviateNumber(payout));
                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(actionbar));

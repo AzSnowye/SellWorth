@@ -54,7 +54,7 @@ public class SellMenuClickListener implements Listener {
                   if (slot >= 0) {
                      if (slot >= bottomStart && slot < bottomStart + 9) {
                         e.setCancelled(true);
-                        p.playSound(p.getLocation(), Sound.valueOf(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK").toUpperCase()), 1.0F, 1.0F);
+                        p.playSound(p.getLocation(), this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK), 1.0F, 1.0F);
                         List<String> items = this.plugin.getConfig().getStringList("sell-menu.items");
                         int idx = slot - bottomStart;
                         if (idx >= 0 && idx < items.size()) {
@@ -86,7 +86,7 @@ public class SellMenuClickListener implements Listener {
                      e.setCancelled(true);
                   } else {
                      e.setCancelled(true);
-                     p.playSound(p.getLocation(), Sound.valueOf(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK").toUpperCase()), 1.0F, 1.0F);
+                     p.playSound(p.getLocation(), this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK), 1.0F, 1.0F);
                      var12 = this.plugin.getConfig().getConfigurationSection("new-sell-menu.item-settings").getKeys(false).iterator();
 
                      while(var12.hasNext()) {

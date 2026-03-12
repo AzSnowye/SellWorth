@@ -271,13 +271,11 @@ public class CategoryGui {
 
       p.openInventory(inv);
 
-      try {
-         Sound sound = Sound.valueOf(this.pageSwitchSoundName);
-         p.playSound(p.getLocation(), sound, 1.0F, 1.0F);
-      } catch (IllegalArgumentException var10) {
+      Sound sound = this.plugin.resolveSound(this.pageSwitchSoundName, Sound.ITEM_BOOK_PAGE_TURN);
+      if (sound == Sound.ITEM_BOOK_PAGE_TURN && this.pageSwitchSoundName != null && !this.pageSwitchSoundName.equalsIgnoreCase("ITEM_BOOK_PAGE_TURN")) {
          this.plugin.getLogger().warning("Invalid sound '" + this.pageSwitchSoundName + "', defaulting to ITEM_BOOK_PAGE_TURN");
-         p.playSound(p.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1.0F, 1.0F);
       }
+      p.playSound(p.getLocation(), sound, 1.0F, 1.0F);
 
    }
 
