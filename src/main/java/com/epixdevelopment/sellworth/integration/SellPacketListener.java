@@ -89,7 +89,12 @@ public class SellPacketListener extends PacketAdapter implements Listener {
    public void onPacketSending(PacketEvent event) {
       PacketContainer packet = event.getPacket();
       Player player = event.getPlayer();
-      UUID uuid = player.getUniqueId();
+      UUID uuid;
+      try {
+         uuid = player.getUniqueId();
+      } catch (UnsupportedOperationException e) {
+         return;
+      }
       if (player.getGameMode() == GameMode.CREATIVE) {
          this.stripAll(packet);
       } else {
