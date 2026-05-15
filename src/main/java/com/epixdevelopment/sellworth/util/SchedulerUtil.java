@@ -74,16 +74,7 @@ public class SchedulerUtil {
         if (!initialized) {
             init(plugin);
         }
-        if (FOLIA && initialized) {
-            try {
-                Object scheduler = getRegionSchedulerMethod.invoke(Bukkit.getServer());
-                scheduler.getClass().getMethod("runDelayed", Plugin.class, Runnable.class, long.class)
-                        .invoke(scheduler, plugin, task, delay);
-                return;
-            } catch (Exception e) {
-                plugin.getLogger().warning("Failed to run Folia delayed task, falling back to sync: " + e.getMessage());
-            }
-        }
+        // Use Bukkit scheduler for delayed tasks - works on both Bukkit and Folia
         try {
             Bukkit.getScheduler().runTaskLater(plugin, task, delay);
         } catch (Exception e) {
@@ -116,16 +107,8 @@ public class SchedulerUtil {
         if (!initialized) {
             init(plugin);
         }
-        if (FOLIA && player != null && initialized) {
-            try {
-                Object scheduler = getSchedulerMethod.invoke(player);
-                scheduler.getClass().getMethod("runDelayed", Plugin.class, Runnable.class, long.class)
-                        .invoke(scheduler, plugin, task, delay);
-                return;
-            } catch (Exception e) {
-                plugin.getLogger().warning("Failed to run Folia delayed player task, falling back to sync: " + e.getMessage());
-            }
-        }
+        // Use Bukkit scheduler for player delayed tasks - works on both Bukkit and Folia
+        // For short delays like 1 tick, this is safe and avoids Folia player scheduler complexity
         try {
             Bukkit.getScheduler().runTaskLater(plugin, task, delay);
         } catch (Exception e) {
