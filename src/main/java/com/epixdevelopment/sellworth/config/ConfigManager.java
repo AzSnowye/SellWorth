@@ -1,13 +1,18 @@
 package com.epixdevelopment.sellworth.config;
 
 import com.epixdevelopment.sellworth.Sell;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.charset.StandardCharsets;
 
 public class ConfigManager {
     private String defaultConfig;
@@ -1694,15 +1699,13 @@ categories:
 
         if (!configFile.exists()) {
             try {
-                String combinedConfig = defaultConfig + defaultConfigPart2;
-                
-                Files.write(configFile.toPath(), combinedConfig.getBytes());
-                plugin.getLogger().info("Created new config file. Using default settings.");
+                copyPackagedConfig();
+                plugin.getLogger().info("Created new config file from packaged resource config.yml.");
             } catch (IOException e) {
                 plugin.getLogger().severe("Could not create config file: " + e.getMessage());
             }
         }
-        
+
         reloadConfig();
     }
 
@@ -1714,22 +1717,13 @@ categories:
     }
 
     public void reloadConfig() {
-        if (config != null) {
-            return;
-        }
         config = YamlConfiguration.loadConfiguration(configFile);
+        mergePackagedDefaultsFromResource();
     }
 
     public void generateFullConfig() {
         try {
-            String fullConfig = defaultConfig + defaultConfigPart2;
-
-            if (!configFile.getParentFile().exists()) {
-                configFile.getParentFile().mkdirs();
-            }
-
-            Files.writeString(configFile.toPath(), fullConfig);
-
+            copyPackagedConfig();
             reloadConfig();
         } catch (Exception e) {
             // if stuff blows up, we still try to drop a usable config so u can edit it
@@ -1738,14 +1732,92 @@ categories:
 
             // If generation fails, create a basic config to prevent further errors
             try {
-                configFile.getParentFile().mkdirs();
-                Files.writeString(configFile.toPath(), defaultConfig + defaultConfigPart2);
-                // if full generation bails, we still drop a basic config for u
+                copyPackagedConfig();
+                reloadConfig();
             } catch (Exception ex) {
                 plugin.getLogger().severe("Failed to create basic config: " + ex.getMessage());
                 ex.printStackTrace();
             }
         }
+    }
+
+    private void copyPackagedConfig() throws IOException {
+        if (!configFile.getParentFile().exists()) {
+            configFile.getParentFile().mkdirs();
+        }
+
+        try (InputStream in = plugin.getResource("config.yml")) {
+            if (in == null) {
+                throw new IOException("Packaged config.yml resource is missing.");
+            }
+
+            Files.copy(in, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private void mergePackagedDefaultsFromResource() {
+        try (InputStream in = plugin.getResource("config.yml")) {
+            if (in == null || this.config == null) {
+                return;
+            }
+
+            YamlConfiguration resourceCfg = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+            if (mergeMissingKeys(resourceCfg, this.config, "")) {
+                saveConfig();
+                plugin.getLogger().info("Merged missing defaults from packaged config.yml into existing config.");
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not merge packaged defaults: " + e.getMessage());
+        }
+    }
+
+    private boolean mergeMissingKeys(FileConfiguration source, FileConfiguration target, String path) {
+        boolean changed = false;
+        for (String key : source.getKeys(false)) {
+            String fullPath = path.isEmpty() ? key : path + "." + key;
+            if (source.isConfigurationSection(key)) {
+                if (!target.isConfigurationSection(fullPath)) {
+                    target.set(fullPath, null);
+                    target.createSection(fullPath);
+                    changed = true;
+                }
+
+                ConfigurationSection srcSection = source.getConfigurationSection(key);
+                ConfigurationSection dstSection = target.getConfigurationSection(fullPath);
+                if (srcSection != null && dstSection != null) {
+                    changed |= mergeMissingSectionKeys(srcSection, target, fullPath);
+                }
+            } else if (!target.isSet(fullPath)) {
+                target.set(fullPath, source.get(key));
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private boolean mergeMissingSectionKeys(ConfigurationSection source, FileConfiguration target, String path) {
+        boolean changed = false;
+        for (String key : source.getKeys(false)) {
+            String fullPath = path.isEmpty() ? key : path + "." + key;
+            if (source.isConfigurationSection(key)) {
+                if (!target.isConfigurationSection(fullPath)) {
+                    target.set(fullPath, null);
+                    target.createSection(fullPath);
+                    changed = true;
+                }
+
+                ConfigurationSection srcSection = source.getConfigurationSection(key);
+                if (srcSection != null) {
+                    changed |= mergeMissingSectionKeys(srcSection, target, fullPath);
+                }
+            } else if (!target.isSet(fullPath)) {
+                target.set(fullPath, source.get(key));
+                changed = true;
+            }
+        }
+
+        return changed;
     }
 
     public void saveConfig() {

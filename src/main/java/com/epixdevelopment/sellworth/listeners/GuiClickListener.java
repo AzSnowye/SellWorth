@@ -5,9 +5,6 @@ import com.epixdevelopment.sellworth.gui.CategoryGui;
 import com.epixdevelopment.sellworth.gui.GuiHolder;
 import com.epixdevelopment.sellworth.gui.ProgressGui;
 import com.epixdevelopment.sellworth.util.SchedulerUtil;
-import java.util.Iterator;
-import java.util.Map;
-import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -39,9 +36,7 @@ public class GuiClickListener implements Listener {
             prevSlot = cfg.getInt("progress-menu.back-button.slot", 45);
             if (ico != null && slot == ico.slot) {
                this.playClickSound(p, cfg);
-               SchedulerUtil.runTaskLater(this.plugin, p, () -> {
-                  (new CategoryGui(this.plugin, cat)).open(p, 0);
-               }, 1L);
+               SchedulerUtil.runTaskLater(this.plugin, p, () -> (new CategoryGui(this.plugin, cat)).open(p, 0), 1L);
             } else if (slot == prevSlot) {
                this.playClickSound(p, cfg);
                this.plugin.getSellGui().open(p);
@@ -49,20 +44,24 @@ public class GuiClickListener implements Listener {
          } else {
             cat = holder.getCategoryKey();
             int page = holder.getPage();
+            CategoryGui.SortOrder sortOrder = holder.getSortOrder();
             prevSlot = cfg.getInt("category-menu.previous-page-slot", 49);
             int nextSlot = cfg.getInt("category-menu.next-page-slot", 51);
             int backSlot = cfg.getInt("category-menu.back-button.slot", 45);
             int rows = cfg.getInt("category-menu.rows", 6);
             int perPage = (rows - 1) * 9;
-            if (slot >= 0 && slot < perPage) {
+            int sortSlot = cfg.getInt("category-menu.sort-button.slot", 47);
+            if (slot == sortSlot) {
+               this.playClickSound(p, cfg);
+               CategoryGui.SortOrder nextOrder = (new CategoryGui(this.plugin, cat)).nextSortOrder(sortOrder);
+               SchedulerUtil.runTaskLater(this.plugin, p, () -> (new CategoryGui(this.plugin, cat)).open(p, 0, nextOrder), 1L);
+            } else if (slot >= 0 && slot < perPage) {
                if (e.getView().getTopInventory().getItem(slot) != null) {
                   this.playClickSound(p, cfg);
                }
 
             } else if (slot == prevSlot && page > 0) {
-               SchedulerUtil.runTaskLater(this.plugin, p, () -> {
-                  (new CategoryGui(this.plugin, cat)).open(p, page - 1);
-               }, 1L);
+               SchedulerUtil.runTaskLater(this.plugin, p, () -> (new CategoryGui(this.plugin, cat)).open(p, page - 1, sortOrder), 1L);
             } else if (slot != nextSlot) {
                if (slot == backSlot) {
                   this.playClickSound(p, cfg);
@@ -70,24 +69,10 @@ public class GuiClickListener implements Listener {
                }
 
             } else {
-               int totalEntries = 0;
-               if (cfg.getList("categories." + cat) != null) {
-                  Iterator var14 = cfg.getList("categories." + cat).iterator();
-
-                  while(var14.hasNext()) {
-                     Object element = var14.next();
-                     if (element instanceof Map) {
-                        Map<?, ?> m = (Map)element;
-                        totalEntries += m.size();
-                     }
-                  }
-               }
-
+               int totalEntries = (new CategoryGui(this.plugin, cat)).getEntryCount();
                int maxPage = (int)Math.ceil((double)totalEntries / (double)perPage) - 1;
                if (page < maxPage) {
-                  SchedulerUtil.runTaskLater(this.plugin, p, () -> {
-                     (new CategoryGui(this.plugin, cat)).open(p, page + 1);
-                  }, 1L);
+                  SchedulerUtil.runTaskLater(this.plugin, p, () -> (new CategoryGui(this.plugin, cat)).open(p, page + 1, sortOrder), 1L);
                }
 
             }

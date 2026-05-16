@@ -4,7 +4,9 @@ package com.epixdevelopment.sellworth.gui;
 import com.epixdevelopment.sellworth.Sell;
 import com.epixdevelopment.sellworth.util.Utils;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -36,24 +38,44 @@ import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionType;
 
 public class CategoryGui {
+   public enum SortOrder {
+      HIGHEST_PRICE,
+      LOWEST_PRICE,
+      NAME
+   }
+
+   private static class CategoryEntry {
+      final ItemStack item;
+      final double price;
+
+      CategoryEntry(ItemStack item, double price) {
+         this.item = item;
+         this.price = price;
+      }
+   }
+
    private final Sell plugin;
    private final String categoryKey;
-   private final List<ItemStack> items = new ArrayList();
+   private final List<CategoryEntry> entries = new ArrayList();
    private final int rows;
    private final String defaultTitleTpl;
    private final Map<String, String> customTitles = new HashMap();
    private final int prevSlot;
    private final int nextSlot;
    private final int backSlot;
+   private final int sortSlot;
    private final Material prevMat;
    private final Material nextMat;
    private final Material backMat;
+   private final Material sortMat;
    private final String prevName;
    private final String nextName;
    private final String backName;
+   private final String sortName;
    private final List<String> prevLore;
    private final List<String> nextLore;
    private final List<String> backLore;
+   private final List<String> sortLore;
    private final String itemNameTpl;
    private final List<String> itemLoreTpl;
    private final String pageSwitchSoundName;
@@ -92,6 +114,11 @@ public class CategoryGui {
       this.backMat = Material.matchMaterial(cfg.getString("back-button.material"));
       this.backName = Utils.formatColors(cfg.getString("back-button.displayname", "&cBack"));
       this.backLore = Utils.formatColors(cfg.getStringList("back-button.lore"));
+      ConfigurationSection sort = cfg.getConfigurationSection("sort-button");
+      this.sortSlot = sort != null ? sort.getInt("slot", 47) : 47;
+      this.sortMat = this.tryMatchMaterial(sort != null ? sort.getString("material", "COMPARATOR") : "COMPARATOR");
+      this.sortName = Utils.formatColors(sort != null ? sort.getString("displayname", "&aSORT") : "&aSORT");
+      this.sortLore = Utils.formatColors(sort != null ? sort.getStringList("lore") : new ArrayList());
       this.itemNameTpl = Utils.formatColors(cfg.getString("item.displayname", "%item%"));
       this.itemLoreTpl = cfg.getStringList("item.lore");
       String configured = plugin.getConfig().getString("sounds.page-switch", "ITEM_BOOK_PAGE_TURN");
@@ -167,7 +194,7 @@ public class CategoryGui {
             }
 
             this.applyDisplayAndLore(stk, entryKey, price, (String)null);
-            this.items.add(stk);
+            this.entries.add(new CategoryEntry(stk, price));
          } catch (IllegalArgumentException var18) {
             Logger var10000 = this.plugin.getLogger();
             String var10001 = spm.group(1);
@@ -199,14 +226,14 @@ public class CategoryGui {
             }
 
             this.applyDisplayAndLore(stk, entryKey, price, found == null ? "Enchanted Book (" + prettyEn + " " + this.toRoman(lvl) + ")" : null);
-            this.items.add(stk);
+            this.entries.add(new CategoryEntry(stk, price));
          } else {
             matName = entryKey.replace("-value", "");
-            Material mat = Material.matchMaterial(matName);
+            Material mat = this.tryMatchMaterial(matName);
             if (mat != null) {
                ItemStack stk = new ItemStack(mat);
                this.applyDisplayAndLore(stk, entryKey, price, (String)null);
-               this.items.add(stk);
+               this.entries.add(new CategoryEntry(stk, price));
             } else {
                Matcher potM = POTION_PATTERN.matcher(entryKey);
                if (potM.matches()) {
@@ -235,7 +262,7 @@ public class CategoryGui {
                      }
 
                      this.applyDisplayAndLore(stk, entryKey, price, (String)null);
-                     this.items.add(stk);
+                     this.entries.add(new CategoryEntry(stk, price));
                   }
                } else {
                   this.plugin.getLogger().warning("Unrecognized entry key '" + entryKey + "' in categories." + this.categoryKey + " — not a spawner, book, material, or known potion.");
@@ -246,15 +273,24 @@ public class CategoryGui {
    }
 
    public void open(Player p, int page) {
+      this.open(p, page, SortOrder.NAME);
+   }
+
+   public void open(Player p, int page, SortOrder order) {
+      List<CategoryEntry> sorted = this.getSortedEntries(order);
       int perPage = (this.rows - 1) * 9;
       int start = page * perPage;
-      int end = Math.min(start + perPage, this.items.size());
+      int end = Math.min(start + perPage, sorted.size());
       String titleTpl = (String)this.customTitles.getOrDefault(this.categoryKey, this.defaultTitleTpl);
-      String title = titleTpl.replace("%item%", this.prettyName(this.categoryKey));
-      Inventory inv = Bukkit.createInventory(new GuiHolder(this.categoryKey, page), this.rows * 9, title);
+      String title = titleTpl.replace("%item%", this.prettyName(this.categoryKey)).replace("%sort%", this.getSortLabel(order));
+      Inventory inv = Bukkit.createInventory(new GuiHolder(this.categoryKey, page, order), this.rows * 9, title);
 
       for(int i = start; i < end; ++i) {
-         inv.setItem(i - start, (ItemStack)this.items.get(i));
+         inv.setItem(i - start, (ItemStack)sorted.get(i).item.clone());
+      }
+
+      if (this.sortMat != null) {
+         inv.setItem(this.sortSlot, this.buildSortButton(order));
       }
 
       if (this.prevMat != null) {
@@ -277,6 +313,85 @@ public class CategoryGui {
       }
       p.playSound(p.getLocation(), sound, 1.0F, 1.0F);
 
+   }
+
+   public int getEntryCount() {
+      return this.entries.size();
+   }
+
+   private List<CategoryEntry> getSortedEntries(SortOrder order) {
+      List<CategoryEntry> sorted = new ArrayList<>(this.entries);
+      Comparator<CategoryEntry> byName = Comparator.comparing((CategoryEntry e) -> {
+         ItemMeta meta = e.item.getItemMeta();
+         if (meta != null && meta.hasDisplayName()) {
+            return meta.getDisplayName();
+         }
+
+         return e.item.getType().name();
+      }, String.CASE_INSENSITIVE_ORDER).thenComparingDouble((CategoryEntry e) -> e.price);
+      Comparator<CategoryEntry> byPrice = Comparator.comparingDouble((CategoryEntry e) -> e.price).thenComparing((CategoryEntry e) -> {
+         ItemMeta meta = e.item.getItemMeta();
+         if (meta != null && meta.hasDisplayName()) {
+            return meta.getDisplayName();
+         }
+
+         return e.item.getType().name();
+      }, String.CASE_INSENSITIVE_ORDER);
+      if (order == SortOrder.NAME) {
+         sorted.sort(byName);
+      } else if (order == SortOrder.HIGHEST_PRICE) {
+         sorted.sort(byPrice.reversed());
+      } else {
+         sorted.sort(byPrice);
+      }
+
+      return sorted;
+   }
+
+   private ItemStack buildSortButton(SortOrder order) {
+      ItemStack b = new ItemStack(this.sortMat);
+      ItemMeta m = b.getItemMeta();
+      if (m != null) {
+         m.setDisplayName(this.sortName);
+         List<String> lore = new ArrayList();
+         String highestLine = this.buildSortLine("Highest Price", order == SortOrder.HIGHEST_PRICE);
+         String lowestLine = this.buildSortLine("Lowest Price", order == SortOrder.LOWEST_PRICE);
+         String nameLine = this.buildSortLine("Name", order == SortOrder.NAME);
+         if (this.sortLore.isEmpty()) {
+            lore.add(Utils.formatColors(highestLine));
+            lore.add(Utils.formatColors(lowestLine));
+            lore.add(Utils.formatColors(nameLine));
+         } else {
+            boolean hasSortPlaceholders = false;
+            Iterator var4 = this.sortLore.iterator();
+
+            while(var4.hasNext()) {
+               String line = (String)var4.next();
+               if (line.contains("%highest%") || line.contains("%lowest%") || line.contains("%name%")) {
+                  hasSortPlaceholders = true;
+                  break;
+               }
+            }
+
+            if (!hasSortPlaceholders) {
+               lore.add(Utils.formatColors(highestLine));
+               lore.add(Utils.formatColors(lowestLine));
+               lore.add(Utils.formatColors(nameLine));
+            } else {
+               var4 = this.sortLore.iterator();
+
+               while(var4.hasNext()) {
+                  String line = (String)var4.next();
+                  lore.add(Utils.formatColors(line.replace("%highest%", highestLine).replace("%lowest%", lowestLine).replace("%name%", nameLine).replace("%current%", this.getSortLabel(order))));
+               }
+            }
+         }
+
+         m.setLore(lore);
+         b.setItemMeta(m);
+      }
+
+      return b;
    }
 
    private void applyDisplayAndLore(ItemStack stk, String entryKey, double price, String customName) {
@@ -437,6 +552,74 @@ public class CategoryGui {
             return var10000 + this.toRoman(number - l);
          }
       }
+   }
+
+   public SortOrder nextSortOrder(SortOrder order) {
+      if (order == SortOrder.HIGHEST_PRICE) {
+         return SortOrder.LOWEST_PRICE;
+      } else {
+         return order == SortOrder.LOWEST_PRICE ? SortOrder.NAME : SortOrder.HIGHEST_PRICE;
+      }
+   }
+
+   public SortOrder defaultSortOrder() {
+      return SortOrder.NAME;
+   }
+
+   private String getSortLabel(SortOrder order) {
+      if (order == SortOrder.HIGHEST_PRICE) {
+         return "Highest Price";
+      } else {
+         return order == SortOrder.LOWEST_PRICE ? "Lowest Price" : "Name";
+      }
+   }
+
+   private String buildSortLine(String label, boolean selected) {
+      return (selected ? "&a" : "&f") + "• " + label;
+   }
+
+   private Material tryMatchMaterial(String name) {
+      if (name == null || name.isEmpty()) {
+         return null;
+      }
+
+      // Try direct match first
+      Material mat = Material.matchMaterial(name);
+      if (mat != null) {
+         return mat;
+      }
+
+      // Try uppercase version
+      mat = Material.matchMaterial(name.toUpperCase(Locale.ROOT));
+      if (mat != null) {
+         return mat;
+      }
+
+      // Try with underscores replaced to hyphens and vice versa
+      String alternative1 = name.replace('-', '_');
+      mat = Material.matchMaterial(alternative1);
+      if (mat != null) {
+         return mat;
+      }
+
+      mat = Material.matchMaterial(alternative1.toUpperCase(Locale.ROOT));
+      if (mat != null) {
+         return mat;
+      }
+
+      // Try legacy conversion (e.g., "chain" -> check if it's known)
+      String alternative2 = name.replace('_', '-');
+      mat = Material.matchMaterial(alternative2);
+      if (mat != null) {
+         return mat;
+      }
+
+      mat = Material.matchMaterial(alternative2.toUpperCase(Locale.ROOT));
+      if (mat != null) {
+         return mat;
+      }
+
+      return null;
    }
 
    static {
