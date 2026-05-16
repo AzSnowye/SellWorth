@@ -1479,6 +1479,34 @@ public final class Sell extends JavaPlugin implements Listener {
       }
    }
 
+   public double getItemMultiplier(Player p, ItemStack item) {
+      if (!isUseMultipliers()) return 1.0;
+      double totalMult = 0;
+      boolean found = false;
+      
+      List<String> keysToCheck = new ArrayList<>();
+      ItemMeta im = item.getItemMeta();
+      if (item.getType() == Material.ENCHANTED_BOOK && im instanceof EnchantmentStorageMeta) {
+         EnchantmentStorageMeta esm = (EnchantmentStorageMeta) im;
+         for (Entry<Enchantment, Integer> entry : esm.getStoredEnchants().entrySet()) {
+            keysToCheck.add((entry.getKey().getKey().getKey() + entry.getValue()).toUpperCase(Locale.ROOT));
+         }
+      } else {
+         keysToCheck.add(item.getType().name());
+      }
+
+      for (Entry<String, List<String>> entry : categoryItems.entrySet()) {
+         for (String key : keysToCheck) {
+            if (entry.getValue().contains(key)) {
+               totalMult += getSellMultiplier(p.getUniqueId(), entry.getKey());
+               found = true;
+               break; 
+            }
+         }
+      }
+      return found ? totalMult : 1.0;
+   }
+
    public ViewTracker getViewTracker() {
       return this.viewTracker;
    }
