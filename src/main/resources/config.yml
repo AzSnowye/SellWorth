@@ -1,0 +1,9 @@
+# Packaged defaults used to fill missing config sections.
+# The plugin copies these values into plugins/SellWorth/config.yml when absent.
+category-menu:
+  sort-button:
+    slot: 47
+    material: HOPPER
+    displayname: '&aSORT'
+    lore: []
+
