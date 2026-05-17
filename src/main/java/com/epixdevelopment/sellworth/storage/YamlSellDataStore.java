@@ -135,7 +135,8 @@ public final class YamlSellDataStore implements SellDataStore {
             }
         }
 
-        config.set("toggleworth-disabled", new ArrayList<>(toggleWorthDisabled));
+        List<String> toggleRaw = toggleWorthDisabled.stream().map(UUID::toString).toList();
+        config.set("toggleworth-disabled", toggleRaw);
         config.save(file);
     }
 
