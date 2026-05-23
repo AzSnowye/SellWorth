@@ -497,6 +497,13 @@ public final class Sell extends JavaPlugin implements Listener {
             this.setupSellAxeCountdown();
          }
 
+         com.epixdevelopment.sellworth.integration.SeriaBoosterHook.init();
+
+         if (getServer().getPluginManager().getPlugin("AxSellwands") != null) {
+            getServer().getPluginManager().registerEvents(new com.epixdevelopment.sellworth.integration.AxSellwandsListener(this), this);
+            getLogger().info("Successfully hooked into AxSellwands for multipliers.");
+         }
+
          this.getLogger().info("SellWorth has been enabled successfully!");
       } catch (Exception e) {
          this.getLogger().severe("Failed to enable SellWorth: " + e.getMessage());
@@ -736,44 +743,25 @@ public final class Sell extends JavaPlugin implements Listener {
       }
    }
 
-   private void unregisterOtherSellCommands() {
-      try {
-         Field cmdMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-         cmdMapField.setAccessible(true);
-         CommandMap commandMap = (CommandMap) cmdMapField.get(Bukkit.getServer());
-
-         Field knownCommandsField = commandMap.getClass().getDeclaredField("knownCommands");
-         knownCommandsField.setAccessible(true);
-
-         @SuppressWarnings("unchecked")
-         Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-
-         if (knownCommands == null) {
-            return; // No commands to unregister
+   @EventHandler(ignoreCancelled = true)
+   public void onPlayerCommandPreprocess(org.bukkit.event.player.PlayerCommandPreprocessEvent event) {
+      String message = event.getMessage().toLowerCase(Locale.ROOT);
+      if (message.equals("/sell") || message.equals("/sellmenu")) {
+         if (!event.getPlayer().hasPermission("sell.use")) {
+            return; // Let Bukkit handle the permission denied message
          }
-
-         String[] commandsToRemove = { "sell", "sellall", "sellhand", "sellhandall", "selltoggle", "sellmenu" };
-
-         for (String cmd : commandsToRemove) {
-            knownCommands.remove(cmd);
-            knownCommands.remove("sellworth:" + cmd);
+         event.setCancelled(true);
+         if (this.sellGui != null) {
+            this.sellGui.open(event.getPlayer());
          }
-
-         for (Command cmd : new ArrayList<>(knownCommands.values())) {
-            if (cmd instanceof PluginCommand && ((PluginCommand) cmd).getPlugin() != null &&
-                  ((PluginCommand) cmd).getPlugin().getName().equalsIgnoreCase("SellWorth") &&
-                  !cmd.getName().equalsIgnoreCase("sellworth")) {
-               knownCommands.remove(cmd.getName().toLowerCase());
-               knownCommands.remove("sellworth:" + cmd.getName().toLowerCase());
-               for (String alias : cmd.getAliases()) {
-                  knownCommands.remove(alias.toLowerCase());
-                  knownCommands.remove("sellworth:" + alias.toLowerCase());
-               }
-            }
-         }
-      } catch (NoSuchFieldException | IllegalAccessException e) {
-      } catch (Exception e) {
+      } else if (message.startsWith("/sell ") || message.startsWith("/sellmenu ")) {
+         event.setMessage("/sellworth:" + event.getMessage().substring(1));
       }
+   }
+
+   private void unregisterOtherSellCommands() {
+      // Intentionally left empty as the old reflection logic broke the plugin's own
+      // commands
    }
 
    private boolean setupVault() {
@@ -1487,9 +1475,7 @@ public final class Sell extends JavaPlugin implements Listener {
    public double getSellMultiplier(UUID u, String cat) {
       double multiplier = 1.0D;
       ConfigurationSection levels = this.getConfig().getConfigurationSection("progress-menu.levels");
-      if (levels == null) {
-         return 1.0D;
-      } else {
+      if (levels != null) {
          double soldInCategory = (Double) ((Map) this.soldByCategory.getOrDefault(u, Collections.emptyMap()))
                .getOrDefault(cat, 0.0D);
          Iterator var8 = levels.getKeys(false).iterator();
@@ -1505,9 +1491,31 @@ public final class Sell extends JavaPlugin implements Listener {
                }
             }
          }
-
-         return multiplier;
       }
+
+      return multiplier * com.epixdevelopment.sellworth.integration.SeriaBoosterHook.getSellMultiplier(u);
+   }
+
+   public double getMaxMilestoneMultiplier(UUID u) {
+      double maxMultiplier = 1.0D;
+      ConfigurationSection levels = this.getConfig().getConfigurationSection("progress-menu.levels");
+      if (levels != null) {
+         for (String cat : this.categoryItems.keySet()) {
+            double soldInCategory = (Double) ((Map) this.soldByCategory.getOrDefault(u, Collections.emptyMap()))
+                  .getOrDefault(cat, 0.0D);
+            for (String key : levels.getKeys(false)) {
+               ConfigurationSection lvlSec = levels.getConfigurationSection(key);
+               if (lvlSec != null) {
+                  double needed = lvlSec.getDouble("amountNeeded", Double.MAX_VALUE);
+                  double multi = lvlSec.getDouble("multi", 1.0D);
+                  if (soldInCategory >= needed && multi > maxMultiplier) {
+                     maxMultiplier = multi;
+                  }
+               }
+            }
+         }
+      }
+      return maxMultiplier;
    }
 
    public double getItemMultiplier(Player p, ItemStack item) {

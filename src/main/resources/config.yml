@@ -1,4 +1,4 @@
-﻿# Settings
+# Settings
 storage:
   type: yaml # yaml, sqlite, mysql
   migrate-from-yaml: true
@@ -19,9 +19,10 @@ use-new-sell-menu: false # use new sell menu or not
 use-multipliers: true # use multipliers or not
 
 # Notification
+sell-notify-mode: CHAT
 sell-notify:
   screen:
-    title: "&a+$%amount%"
+    title: "&a+$%amount% Gins"
     subtitle: "&7You sold %items% items"
 
 # GUIs that ARE allowed to show worth lore in their top inventory (substring match, case-insensitive)
