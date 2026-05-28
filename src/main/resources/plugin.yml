@@ -21,7 +21,7 @@ commands:
     usage: /worth [item] [amount]
     permission: sell.use
   sellhistory:
-    usage: /sellhistory
+    usage: /sellhistory [player]
     permission: sell.use
   sellmulti:
     usage: /sellmulti

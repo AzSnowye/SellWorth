@@ -50,7 +50,7 @@ public class HistoryClickListener implements Listener {
                   gui.open(p, 1);
                } else {
                   int perPage = (gui.getRows() - 1) * 9;
-                  int total = this.plugin.getHistory(p.getUniqueId()).size();
+                  int total = this.plugin.getHistory(tracker.getTarget(p.getUniqueId())).size();
                   int maxPages = (total + perPage - 1) / perPage;
                   if (slot == gui.getBackSlot() && page > 1) {
                      this.suppressClear.add(p.getUniqueId());

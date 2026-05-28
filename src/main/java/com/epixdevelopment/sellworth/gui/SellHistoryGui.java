@@ -106,7 +106,9 @@ public class SellHistoryGui {
    public void open(Player p, int page) {
       HistoryTracker tracker = this.plugin.getHistoryTracker();
       HistoryTracker.SortOrder order = tracker.getOrder(p.getUniqueId());
-      Map<String, Sell.Stats> history = this.plugin.getHistory(p.getUniqueId());
+      java.util.UUID targetId = tracker.getTarget(p.getUniqueId());
+      org.bukkit.OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(targetId);
+      Map<String, Sell.Stats> history = this.plugin.getHistory(targetId);
       List<Entry<String, Sell.Stats>> all = new ArrayList(history.entrySet());
       switch(order) {
       case HIGH:
@@ -190,20 +192,21 @@ public class SellHistoryGui {
       inv.setItem(this.sortSlot, sortBtn);
       ItemStack head = new ItemStack(this.playerMat);
       SkullMeta sk = (SkullMeta)head.getItemMeta();
-      sk.setOwningPlayer(p);
-      trimmed = Utils.formatColors(this.playerNameTpl).replace("%player%", p.getName());
+      sk.setOwningPlayer(targetPlayer);
+      String tName = targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown";
+      trimmed = Utils.formatColors(this.playerNameTpl).replace("%player%", tName);
       
       if (plugin.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-          trimmed = PlaceholderAPI.setPlaceholders(p, trimmed);
+          trimmed = PlaceholderAPI.setPlaceholders(targetPlayer, trimmed);
       }
       
       sk.setDisplayName(trimmed);
       List<String> plore = this.playerLoreTpl.stream()
          .map(Utils::formatColors)
-         .map(line -> line.replace("%player%", p.getName()))
+         .map(line -> line.replace("%player%", tName))
          .map(line -> {
              if (plugin.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-                 return PlaceholderAPI.setPlaceholders(p, line);
+                 return PlaceholderAPI.setPlaceholders(targetPlayer, line);
              }
              return line;
          })

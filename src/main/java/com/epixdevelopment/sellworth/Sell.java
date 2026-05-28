@@ -134,6 +134,11 @@ public final class Sell extends JavaPlugin implements Listener {
    private static Sell instance;
    private ExecutorService storageExecutor;
    private org.bukkit.command.CommandExecutor sellMultiExecutor;
+   private com.epixdevelopment.sellworth.util.TransactionLog transactionLog;
+
+   public com.epixdevelopment.sellworth.util.TransactionLog getTransactionLog() {
+      return this.transactionLog;
+   }
 
    private static final int NOTIFICATION_FADE_IN = 5; // 0.25 seconds
    private static final int NOTIFICATION_STAY = 40; // 2 seconds
@@ -429,6 +434,8 @@ public final class Sell extends JavaPlugin implements Listener {
             this.getLogger()
                   .warning("ConfigManager is not initialized, GUI components will be initialized on first use");
          }
+
+         this.transactionLog = new com.epixdevelopment.sellworth.util.TransactionLog(this);
 
          this.sellAxeKey = new NamespacedKey(this, "sell_wand");
          this.expiryKey = new NamespacedKey(this, "sell_wand_expiry");
@@ -1031,6 +1038,9 @@ public final class Sell extends JavaPlugin implements Listener {
       sold.forEach((k, st) -> {
          Sell.Stats old = (Sell.Stats) ((Map) this.itemHistory.get(id)).getOrDefault(k, new Sell.Stats(0.0D, 0.0D));
          ((Map) this.itemHistory.get(id)).put(k, new Sell.Stats(old.count + st.count, old.revenue + st.revenue));
+         if (this.transactionLog != null) {
+            this.transactionLog.logSell(p, k, st.count, st.revenue, false);
+         }
       });
       double sum = sold.values().stream().mapToDouble((s) -> {
          return s.revenue;
@@ -1353,6 +1363,7 @@ public final class Sell extends JavaPlugin implements Listener {
                long itemsSold = Math.round(sold.values().stream().mapToDouble((s) -> {
                   return s.count;
                }).sum());
+               this.getServer().getPluginManager().callEvent(new com.epixdevelopment.sellworth.api.events.SellWorthSellEvent(p, payout, itemsSold));
                this.notifySale(p, payout, itemsSold);
             }
          }

@@ -21,7 +21,14 @@ public class SellHistoryCommand implements CommandExecutor {
          return true;
       } else {
          Player p = (Player)sender;
-         this.plugin.getSellHistoryGui().open(p, 1);
+         if (args.length > 0 && p.hasPermission("sell.admin")) {
+            org.bukkit.OfflinePlayer target = org.bukkit.Bukkit.getOfflinePlayer(args[0]);
+            this.plugin.getHistoryTracker().setTarget(p.getUniqueId(), target.getUniqueId());
+            this.plugin.getSellHistoryGui().open(p, 1);
+         } else {
+            this.plugin.getHistoryTracker().setTarget(p.getUniqueId(), p.getUniqueId());
+            this.plugin.getSellHistoryGui().open(p, 1);
+         }
          return true;
       }
    }

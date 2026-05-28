@@ -8,6 +8,15 @@ public class HistoryTracker {
    private final Map<UUID, Integer> pages = new HashMap();
    private final Map<UUID, HistoryTracker.SortOrder> orders = new HashMap();
    private final Map<UUID, String> filters = new HashMap();
+   private final Map<UUID, UUID> targets = new HashMap();
+
+   public void setTarget(UUID viewer, UUID target) {
+      this.targets.put(viewer, target);
+   }
+
+   public UUID getTarget(UUID viewer) {
+      return this.targets.getOrDefault(viewer, viewer);
+   }
 
    public void setPage(UUID player, int page) {
       this.pages.put(player, page);
@@ -66,6 +75,7 @@ public class HistoryTracker {
       this.pages.remove(player);
       this.orders.remove(player);
       this.filters.remove(player);
+      this.targets.remove(player);
    }
 
    public static enum SortOrder {

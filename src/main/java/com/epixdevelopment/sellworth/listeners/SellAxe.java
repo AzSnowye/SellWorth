@@ -180,6 +180,8 @@ public class SellAxe implements Listener {
 
                            if (this.plugin.getEconomy() != null) {
                               this.plugin.getEconomy().depositPlayer(player, payout);
+                              long itemsSold = Math.round(sold.values().stream().mapToDouble(s -> s.count).sum());
+                              org.bukkit.Bukkit.getPluginManager().callEvent(new com.epixdevelopment.sellworth.api.events.SellWorthSellEvent(player, payout, itemsSold));
                            } else {
                               this.plugin.getLogger().warning("Economy provider not available; skipping payout for " + player.getName() + " ($" + payout + ")");
                            }
