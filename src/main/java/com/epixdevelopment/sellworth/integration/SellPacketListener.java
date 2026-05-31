@@ -1,14 +1,13 @@
 package com.epixdevelopment.sellworth.integration;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.PacketType.Play.Server;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.wrappers.WrappedChatComponent;
+import com.github.retrooper.packetevents.event.PacketListener;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerOpenWindow;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerWindowItems;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetSlot;
+import io.github.retrooper.packetevents.util.SpigotConversionUtil;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import com.epixdevelopment.sellworth.Sell;
 import com.epixdevelopment.sellworth.util.Utils;
 import java.util.ArrayList;
@@ -40,7 +39,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionData;
 
-public class SellPacketListener extends PacketAdapter implements Listener {
+public class SellPacketListener implements PacketListener, Listener {
    private final Sell plugin;
    private final Map<Material, Double> values = new HashMap();
    private List<String> loreTemplate;
@@ -53,13 +52,11 @@ public class SellPacketListener extends PacketAdapter implements Listener {
    private final Map<UUID, Boolean> worthOpen = new HashMap();
    private final Map<UUID, Boolean> lastClickCancelled = new HashMap();
    private final Map<UUID, Integer> containerSize = new HashMap();
+   private final Map<String, String> itemCategoryCache = new HashMap();
 
    public SellPacketListener(Sell plugin) {
-      super(plugin, ListenerPriority.NORMAL, new PacketType[]{Server.OPEN_WINDOW, Server.WINDOW_ITEMS, Server.SET_SLOT});
       this.plugin = plugin;
       this.loadConfigData();
-      ProtocolManager mgr = ProtocolLibrary.getProtocolManager();
-      mgr.addPacketListener(this);
       plugin.getServer().getPluginManager().registerEvents(this, plugin);
    }
 
@@ -84,11 +81,20 @@ public class SellPacketListener extends PacketAdapter implements Listener {
       this.disabledItems = (Set)this.plugin.getConfig().getStringList("disabled-items").stream().map((s) -> {
          return s.toUpperCase(Locale.ROOT);
       }).collect(Collectors.toSet());
+      this.itemCategoryCache.clear();
+      for (Entry<String, List<String>> entry : this.plugin.categoryItems.entrySet()) {
+         for (String itemName : entry.getValue()) {
+            this.itemCategoryCache.put(itemName, entry.getKey());
+         }
+      }
    }
 
-   public void onPacketSending(PacketEvent event) {
-      PacketContainer packet = event.getPacket();
-      Player player = event.getPlayer();
+   @Override
+   public void onPacketSend(PacketSendEvent event) {
+      Player player = (Player) event.getPlayer();
+      if (player == null) {
+         return;
+      }
       UUID uuid;
       try {
          uuid = player.getUniqueId();
@@ -96,61 +102,62 @@ public class SellPacketListener extends PacketAdapter implements Listener {
          return;
       }
       if (player.getGameMode() == GameMode.CREATIVE) {
-         this.stripAll(packet);
+         this.stripAll(event);
       } else {
          int wid;
          boolean allowTopWorth;
-         if (packet.getType() == Server.OPEN_WINDOW) {
-            wid = (Integer)packet.getIntegers().read(0);
+         if (event.getPacketType() == PacketType.Play.Server.OPEN_WINDOW) {
+            WrapperPlayServerOpenWindow wrapper = new WrapperPlayServerOpenWindow(event);
+            wid = wrapper.getContainerId();
             this.openWindowId.put(uuid, wid);
-            String titleJson = ((WrappedChatComponent)packet.getChatComponents().read(0)).getJson().toLowerCase();
+            String titleJson = GsonComponentSerializer.gson().serialize(wrapper.getTitle()).toLowerCase();
             boolean matchesConfigured = this.worthGuiNames.stream()
                 .anyMatch(name -> titleJson.contains(name));
             allowTopWorth = matchesConfigured;
             this.worthOpen.put(uuid, allowTopWorth);
             this.containerSize.remove(uuid);
          } else if (!this.displayWorthLore) {
-            this.stripAll(packet);
+            this.stripAll(event);
          } else if (!this.plugin.isWorthEnabled(uuid)) {
-            this.stripAll(packet);
+            this.stripAll(event);
          } else {
             boolean invWindow;
             int contSlots;
             int i;
-            if (packet.getType() == Server.WINDOW_ITEMS) {
-               wid = (Integer)packet.getIntegers().read(0);
+            if (event.getPacketType() == PacketType.Play.Server.WINDOW_ITEMS) {
+               WrapperPlayServerWindowItems wrapper = new WrapperPlayServerWindowItems(event);
+               wid = wrapper.getWindowId();
                invWindow = wid == 0;
                allowTopWorth = (Boolean)this.worthOpen.getOrDefault(uuid, false) && !invWindow;
-               List<ItemStack> items = new ArrayList((Collection)packet.getItemListModifier().read(0));
-               int total;
-               if (invWindow) {
-                  for(total = 0; total < items.size(); ++total) {
-                     items.set(total, this.applyLore((ItemStack)items.get(total), uuid));
-                  }
-               } else {
-                  total = items.size();
-                  int invSlots = 36;
-                  contSlots = Math.max(0, total - invSlots);
-                  this.containerSize.put(uuid, contSlots);
+               List<com.github.retrooper.packetevents.protocol.item.ItemStack> peItems = wrapper.getItems();
+               List<com.github.retrooper.packetevents.protocol.item.ItemStack> newPeItems = new ArrayList<>();
+               int total = peItems.size();
+               int invSlots = 36;
+               contSlots = Math.max(0, total - invSlots);
+               this.containerSize.put(uuid, contSlots);
 
-                  for(i = 0; i < total; ++i) {
-                     ItemStack orig = (ItemStack)items.get(i);
-                     if (i < contSlots) {
-                        items.set(i, allowTopWorth ? this.applyLore(orig, uuid) : this.stripWorthLore(orig));
-                     } else {
-                        items.set(i, this.applyLore(orig, uuid));
-                     }
+               for(i = 0; i < total; ++i) {
+                  com.github.retrooper.packetevents.protocol.item.ItemStack peItem = peItems.get(i);
+                  ItemStack orig = SpigotConversionUtil.toBukkitItemStack(peItem);
+                  ItemStack modified;
+                  if (i < contSlots) {
+                     modified = allowTopWorth ? this.applyLore(orig, uuid) : this.stripWorthLore(orig);
+                  } else {
+                     modified = this.applyLore(orig, uuid);
                   }
+                  newPeItems.add(SpigotConversionUtil.fromBukkitItemStack(modified));
                }
 
-               packet.getItemListModifier().write(0, items);
-            } else if (packet.getType() == Server.SET_SLOT) {
-               wid = (Integer)packet.getIntegers().read(0);
+               wrapper.setItems(newPeItems);
+            } else if (event.getPacketType() == PacketType.Play.Server.SET_SLOT) {
+               WrapperPlayServerSetSlot wrapper = new WrapperPlayServerSetSlot(event);
+               wid = wrapper.getWindowId();
                invWindow = wid == 0;
                allowTopWorth = (Boolean)this.worthOpen.getOrDefault(uuid, false) && !invWindow;
                boolean clickCancelled = (Boolean)this.lastClickCancelled.getOrDefault(uuid, false);
-               ItemStack in = (ItemStack)packet.getItemModifier().read(0);
-               contSlots = (Integer)packet.getIntegers().read(1);
+               com.github.retrooper.packetevents.protocol.item.ItemStack peItem = wrapper.getItem();
+               ItemStack in = SpigotConversionUtil.toBukkitItemStack(peItem);
+               contSlots = wrapper.getSlot();
                ItemStack out;
                if (invWindow) {
                   out = this.applyLore(in, uuid);
@@ -165,7 +172,7 @@ public class SellPacketListener extends PacketAdapter implements Listener {
                   }
                }
 
-               packet.getItemModifier().write(0, out);
+               wrapper.setItem(SpigotConversionUtil.fromBukkitItemStack(out));
                this.lastClickCancelled.remove(uuid);
             }
 
@@ -173,20 +180,21 @@ public class SellPacketListener extends PacketAdapter implements Listener {
       }
    }
 
-   private void stripAll(PacketContainer packet) {
-      if (packet.getType() == Server.WINDOW_ITEMS) {
-         List<ItemStack> items = new ArrayList((Collection)packet.getItemListModifier().read(0));
-
-         for(int i = 0; i < items.size(); ++i) {
-            items.set(i, this.stripWorthLore((ItemStack)items.get(i)));
+   private void stripAll(PacketSendEvent event) {
+      if (event.getPacketType() == PacketType.Play.Server.WINDOW_ITEMS) {
+         WrapperPlayServerWindowItems wrapper = new WrapperPlayServerWindowItems(event);
+         List<com.github.retrooper.packetevents.protocol.item.ItemStack> peItems = wrapper.getItems();
+         List<com.github.retrooper.packetevents.protocol.item.ItemStack> newPeItems = new ArrayList<>();
+         for (com.github.retrooper.packetevents.protocol.item.ItemStack peItem : peItems) {
+            ItemStack bukkitItem = SpigotConversionUtil.toBukkitItemStack(peItem);
+            newPeItems.add(SpigotConversionUtil.fromBukkitItemStack(this.stripWorthLore(bukkitItem)));
          }
-
-         packet.getItemListModifier().write(0, items);
-      } else if (packet.getType() == Server.SET_SLOT) {
-         ItemStack in = (ItemStack)packet.getItemModifier().read(0);
-         packet.getItemModifier().write(0, this.stripWorthLore(in));
+         wrapper.setItems(newPeItems);
+      } else if (event.getPacketType() == PacketType.Play.Server.SET_SLOT) {
+         WrapperPlayServerSetSlot wrapper = new WrapperPlayServerSetSlot(event);
+         ItemStack in = SpigotConversionUtil.toBukkitItemStack(wrapper.getItem());
+         wrapper.setItem(SpigotConversionUtil.fromBukkitItemStack(this.stripWorthLore(in)));
       }
-
    }
 
    public ItemStack stripWorthLore(ItemStack original) {
@@ -245,11 +253,7 @@ public class SellPacketListener extends PacketAdapter implements Listener {
                         double boxUnitPrice = this.plugin.getPrice(boxKey);
                         int boxCount = item.getAmount();
                         if (!this.disabledItems.contains(item.getType().name())) {
-                           spawnerKey = this.plugin.categoryItems.entrySet().stream()
-                              .filter(ex -> ex.getValue().contains(item.getType().name()))
-                              .map(Entry::getKey)
-                              .findFirst()
-                              .orElse(null);
+                           spawnerKey = this.itemCategoryCache.get(item.getType().name());
                            raw = spawnerKey != null ? this.plugin.getSellMultiplier(playerId, spawnerKey) : 1.0D;
                            totalValue += boxUnitPrice * (double)boxCount * raw;
                         }
@@ -266,11 +270,7 @@ public class SellPacketListener extends PacketAdapter implements Listener {
                            ItemStack inside = var38[var40];
                            if (inside != null && inside.getType() != Material.AIR && !this.disabledItems.contains(inside.getType().name())) {
                               insideRaw = this.plugin.calculateItemWorth(inside);
-                              String insideCat = this.plugin.categoryItems.entrySet().stream()
-                                  .filter(ex -> ex.getValue().contains(inside.getType().name()))
-                                  .map(Entry::getKey)
-                                  .findFirst()
-                                  .orElse(null);
+                              String insideCat = this.itemCategoryCache.get(inside.getType().name());
                               double insideMult = insideCat != null ? this.plugin.getSellMultiplier(playerId, insideCat) : 1.0D;
                               totalValue += insideRaw * insideMult;
                            }
@@ -325,11 +325,7 @@ public class SellPacketListener extends PacketAdapter implements Listener {
 
                   int amt = item.getAmount();
                   raw = (baseVal + enchVal) * (double)amt;
-                  String cat = this.plugin.categoryItems.entrySet().stream()
-                      .filter(ex -> ex.getValue().contains(item.getType().name()))
-                      .map(Entry::getKey)
-                      .findFirst()
-                      .orElse(null);
+                  String cat = this.itemCategoryCache.get(item.getType().name());
                   insideRaw = cat != null ? this.plugin.getSellMultiplier(playerId, cat) : 1.0D;
                   totalValue = raw * insideRaw;
                }

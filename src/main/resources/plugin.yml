@@ -6,7 +6,7 @@ api-version: '${plugin.api}'
 description: ${project.description}
 
 softdepend:
-  - ProtocolLib
+  - packetevents
   - Vault
   - PlaceholderAPI
 

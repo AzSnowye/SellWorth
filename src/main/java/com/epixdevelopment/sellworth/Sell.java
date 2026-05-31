@@ -27,8 +27,8 @@ import com.epixdevelopment.sellworth.tracker.HistoryTracker;
 import com.epixdevelopment.sellworth.tracker.ViewTracker;
 import com.epixdevelopment.sellworth.util.SchedulerUtil;
 import com.epixdevelopment.sellworth.util.Utils;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
+import com.github.retrooper.packetevents.PacketEvents;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import com.epixdevelopment.sellworth.storage.SellDataStore;
 import com.epixdevelopment.sellworth.storage.SqlSellDataStore;
 import com.epixdevelopment.sellworth.storage.YamlSellDataStore;
@@ -106,7 +106,6 @@ public final class Sell extends JavaPlugin implements Listener {
    public static final String BOLD = "\u001B[1m";
    public static final String UNDERLINE = "\u001B[4m";
 
-   private ProtocolManager protocol;
    private SellPacketListener packetListener;
    private CleanupListener cleanupListener;
    private ViewTracker viewTracker;
@@ -328,6 +327,17 @@ public final class Sell extends JavaPlugin implements Listener {
    }
 
    @Override
+   public void onLoad() {
+      try {
+         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+         PacketEvents.getAPI().getSettings().checkForUpdates(false).bStats(true);
+         PacketEvents.getAPI().load();
+      } catch (Exception e) {
+         getLogger().severe("Failed to load PacketEvents: " + e.getMessage());
+      }
+   }
+
+   @Override
    public void onEnable() {
       if (instance != null) {
          if (getLogger() != null) {
@@ -408,13 +418,16 @@ public final class Sell extends JavaPlugin implements Listener {
          buildCategoryItems();
 
          try {
-            this.protocol = ProtocolLibrary.getProtocolManager();
+            PacketEvents.getAPI().init();
             this.packetListener = new SellPacketListener(this);
-            this.protocol.addPacketListener(this.packetListener);
-            this.getLogger().info("ProtocolLib integration initialized");
+            PacketEvents.getAPI().getEventManager().registerListener(
+               this.packetListener,
+               com.github.retrooper.packetevents.event.PacketListenerPriority.NORMAL
+            );
+            this.getLogger().info("PacketEvents integration initialized");
          } catch (Exception e) {
-            this.getLogger().severe("Failed to initialize ProtocolLib integration: " + e.getMessage());
-            this.getLogger().warning("Some features may not work without ProtocolLib!");
+            this.getLogger().severe("Failed to initialize PacketEvents integration: " + e.getMessage());
+            this.getLogger().warning("Some features may not work without PacketEvents!");
          }
 
          this.viewTracker = new ViewTracker();
@@ -547,12 +560,10 @@ public final class Sell extends JavaPlugin implements Listener {
             this.dataStore = null;
          }
 
-         if (this.protocol != null && this.packetListener != null) {
-            try {
-               this.protocol.removePacketListener(this.packetListener);
-            } catch (Exception e) {
-               getLogger().warning("Error removing ProtocolLib listener: " + e.getMessage());
-            }
+         try {
+            PacketEvents.getAPI().terminate();
+         } catch (Exception e) {
+            getLogger().warning("Error terminating PacketEvents: " + e.getMessage());
          }
 
          getLogger().info("SellWorth has been disabled successfully!");
@@ -967,6 +978,17 @@ public final class Sell extends JavaPlugin implements Listener {
       }
 
       this.saveToggleWorthToSave();
+
+      Player p = Bukkit.getPlayer(id);
+      if (p != null) {
+         if (!enabled) {
+            if (this.cleanupListener != null) {
+               this.cleanupListener.stripAllLore(p);
+            }
+         } else {
+            p.updateInventory();
+         }
+      }
    }
 
    private void buildCategoryItems() {
