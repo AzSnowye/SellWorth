@@ -1,0 +1,15 @@
+# MMOItems Price Configuration
+# Define selling prices for MMOItems here.
+# You can use two formats:
+#
+# Format 1 (Nested):
+# MINING_MATERIAL:
+#   FLAWLESS_AGATE: 20.0
+#
+# Format 2 (List of Objects):
+# - type: MINING_MATERIAL
+#   id: FLAWLESS_AGATE
+#   base: 20
+
+MINING_MATERIAL:
+  FLAWLESS_AGATE: 20.0

@@ -233,6 +233,34 @@ public class SellPacketListener implements PacketListener, Listener {
          } else if (this.disabledItems.contains(original.getType().name())) {
             return original;
          } else {
+            // Check CustomFishing first — if this is a CF fish, use its market price
+            org.bukkit.entity.Player cfPlayer = this.plugin.getServer().getPlayer(playerId);
+            com.epixdevelopment.sellworth.integration.CustomFishingHook cfHook = this.plugin.getCustomFishingHook();
+            if (cfPlayer != null && cfHook != null && cfHook.isEnabled() && cfHook.isCustomFishingItem(original)) {
+               Double cfPrice = cfHook.getPrice(cfPlayer, original);
+               if (cfPrice != null) {
+                  double cfTotal = cfPrice * original.getAmount();
+                  ItemStack item = original.clone();
+                  ItemMeta meta = item.getItemMeta();
+                  if (meta == null) return original;
+                  String display = Utils.abbreviateNumber(cfTotal);
+                  List<String> newLines = (List<String>) this.loreTemplate.stream().map((line) -> {
+                     return Utils.formatColors(line.replace("%amount%", display));
+                  }).collect(Collectors.toList());
+                  List<String> existing = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                  existing.removeIf((line) -> {
+                     String plain = ChatColor.stripColor(line).toLowerCase(Locale.ROOT).trim();
+                     return this.lorePlainPrefixes.stream().anyMatch(prefix -> plain.startsWith(prefix));
+                  });
+                  for (String nl : newLines) {
+                     if (!existing.contains(nl)) existing.add(nl);
+                  }
+                  meta.setLore(existing.isEmpty() ? null : existing);
+                  item.setItemMeta(meta);
+                  return item;
+               }
+            }
+
             ItemStack item = original.clone();
             ItemMeta meta = item.getItemMeta();
             if (meta == null) {

@@ -15,6 +15,8 @@ import com.epixdevelopment.sellworth.gui.SellHistoryGui;
 import com.epixdevelopment.sellworth.integration.SellPacketListener;
 import com.epixdevelopment.sellworth.integration.SellPlaceholderExpansion;
 import com.epixdevelopment.sellworth.integration.VaultMoneyPlaceholder;
+import com.epixdevelopment.sellworth.integration.MMOItemsHook;
+import com.epixdevelopment.sellworth.integration.CustomFishingHook;
 import com.epixdevelopment.sellworth.listeners.ChatInputListener;
 import com.epixdevelopment.sellworth.listeners.CleanupListener;
 import com.epixdevelopment.sellworth.listeners.GuiClickListener;
@@ -134,6 +136,16 @@ public final class Sell extends JavaPlugin implements Listener {
    private ExecutorService storageExecutor;
    private org.bukkit.command.CommandExecutor sellMultiExecutor;
    private com.epixdevelopment.sellworth.util.TransactionLog transactionLog;
+   private MMOItemsHook mmoItemsHook;
+   private CustomFishingHook customFishingHook;
+
+   public MMOItemsHook getMMOItemsHook() {
+      return this.mmoItemsHook;
+   }
+
+   public CustomFishingHook getCustomFishingHook() {
+      return this.customFishingHook;
+   }
 
    public com.epixdevelopment.sellworth.util.TransactionLog getTransactionLog() {
       return this.transactionLog;
@@ -429,6 +441,9 @@ public final class Sell extends JavaPlugin implements Listener {
             this.getLogger().severe("Failed to initialize PacketEvents integration: " + e.getMessage());
             this.getLogger().warning("Some features may not work without PacketEvents!");
          }
+
+         this.mmoItemsHook = new MMOItemsHook(this);
+         this.customFishingHook = new CustomFishingHook(this);
 
          this.viewTracker = new ViewTracker();
          this.historyTracker = new HistoryTracker();
@@ -823,6 +838,16 @@ public final class Sell extends JavaPlugin implements Listener {
          configManager.reloadConfig();
          reloadConfig(); // Reload Bukkit's config
 
+         if (mmoItemsHook != null) {
+            mmoItemsHook.checkPlugin();
+            if (mmoItemsHook.isEnabled()) {
+               mmoItemsHook.loadConfig();
+            }
+         }
+         if (customFishingHook != null) {
+            customFishingHook.checkPlugin();
+         }
+
          setupSaveFile();
          loadHistory();
          buildCategoryItems(); // Rebuild category items
@@ -1199,20 +1224,25 @@ public final class Sell extends JavaPlugin implements Listener {
                                           }
                                        }
                                     } else {
-                                       String insideKey = inside.getType().name().toLowerCase(Locale.ROOT);
-                                       double insideValue = this.calculateItemWorth(inside);
-                                       sold.merge(insideKey, new Sell.Stats((double) inside.getAmount(), insideValue),
-                                             (a, b) -> {
-                                                return new Sell.Stats(a.count + b.count, a.revenue + b.revenue);
-                                             });
-                                       Iterator var82 = this.categoryItems.entrySet().iterator();
-
-                                       while (var82.hasNext()) {
-                                          Entry<String, List<String>> cat = (Entry) var82.next();
-                                          if (((List) cat.getValue()).contains(inside.getType().name())) {
-                                             revCats.merge((String) cat.getKey(), insideValue, Double::sum);
-                                          }
-                                       }
+                                        String insideKey = this.getItemKey(inside);
+                                        double insideValue = this.calculateItemWorth(p, inside);
+                                        sold.merge(insideKey, new Sell.Stats((double) inside.getAmount(), insideValue),
+                                              (a, b) -> {
+                                                 return new Sell.Stats(a.count + b.count, a.revenue + b.revenue);
+                                              });
+                                        boolean isCfItem = this.customFishingHook != null && this.customFishingHook.isCustomFishingItem(inside);
+                                        Iterator var82 = this.categoryItems.entrySet().iterator();
+ 
+                                        while (var82.hasNext()) {
+                                           Entry<String, List<String>> cat = (Entry) var82.next();
+                                           if (isCfItem) {
+                                               if (cat.getKey().equalsIgnoreCase("tropical_fish")) {
+                                                  revCats.merge((String) cat.getKey(), insideValue, Double::sum);
+                                               }
+                                           } else if (((List) cat.getValue()).contains(inside.getType().name())) {
+                                              revCats.merge((String) cat.getKey(), insideValue, Double::sum);
+                                           }
+                                        }
                                     }
                                  }
                               }
@@ -1285,17 +1315,22 @@ public final class Sell extends JavaPlugin implements Listener {
                                        }
                                     }
                                  } else {
-                                    String insideKey = inside.getType().name().toLowerCase(Locale.ROOT);
-                                    double insideValue = this.calculateItemWorth(inside);
+                                    String insideKey = this.getItemKey(inside);
+                                    double insideValue = this.calculateItemWorth(p, inside);
                                     sold.merge(insideKey, new Sell.Stats((double) inside.getAmount(), insideValue),
                                           (a, b) -> {
                                              return new Sell.Stats(a.count + b.count, a.revenue + b.revenue);
                                           });
+                                    boolean isCfItem = this.customFishingHook != null && this.customFishingHook.isCustomFishingItem(inside);
                                     Iterator var37 = this.categoryItems.entrySet().iterator();
 
                                     while (var37.hasNext()) {
                                        Entry<String, List<String>> cat = (Entry) var37.next();
-                                       if (((List) cat.getValue()).contains(inside.getType().name())) {
+                                       if (isCfItem) {
+                                           if (cat.getKey().equalsIgnoreCase("tropical_fish")) {
+                                              revCats.merge((String) cat.getKey(), insideValue, Double::sum);
+                                           }
+                                       } else if (((List) cat.getValue()).contains(inside.getType().name())) {
                                           revCats.merge((String) cat.getKey(), insideValue, Double::sum);
                                        }
                                     }
@@ -1331,19 +1366,24 @@ public final class Sell extends JavaPlugin implements Listener {
                            }
                         }
                      } else {
-                        String key = item.getType().name().toLowerCase(Locale.ROOT);
-                        double raw = this.calculateItemWorth(item);
-                        sold.merge(key, new Sell.Stats((double) item.getAmount(), raw), (a, b) -> {
-                           return new Sell.Stats(a.count + b.count, a.revenue + b.revenue);
-                        });
-                        Iterator var25 = this.categoryItems.entrySet().iterator();
-
-                        while (var25.hasNext()) {
-                           Entry<String, List<String>> cat = (Entry) var25.next();
-                           if (((List) cat.getValue()).contains(item.getType().name())) {
-                              revCats.merge((String) cat.getKey(), raw, Double::sum);
-                           }
-                        }
+                         String key = this.getItemKey(item);
+                         double raw = this.calculateItemWorth(p, item);
+                         sold.merge(key, new Sell.Stats((double) item.getAmount(), raw), (a, b) -> {
+                            return new Sell.Stats(a.count + b.count, a.revenue + b.revenue);
+                         });
+                         boolean isCfItem = this.customFishingHook != null && this.customFishingHook.isCustomFishingItem(item);
+                         Iterator var25 = this.categoryItems.entrySet().iterator();
+ 
+                         while (var25.hasNext()) {
+                            Entry<String, List<String>> cat = (Entry) var25.next();
+                            if (isCfItem) {
+                                if (cat.getKey().equalsIgnoreCase("tropical_fish")) {
+                                   revCats.merge((String) cat.getKey(), raw, Double::sum);
+                                }
+                            } else if (((List) cat.getValue()).contains(item.getType().name())) {
+                               revCats.merge((String) cat.getKey(), raw, Double::sum);
+                            }
+                         }
                      }
                   }
                }
@@ -1357,9 +1397,13 @@ public final class Sell extends JavaPlugin implements Listener {
                      return (Double) e.getValue() * this.getSellMultiplier(p.getUniqueId(), (String) e.getKey());
                   }).sum();
                   double uncategorized = sold.entrySet().stream().filter((e) -> {
+                     String k = e.getKey();
+                     if (k.startsWith("customfishing_")) {
+                        return false;
+                     }
                      return this.categoryItems.values().stream().noneMatch((list) -> {
-                        return list.contains(((String) e.getKey()).toUpperCase(Locale.ROOT));
-                     });
+                        return list.contains(k.toUpperCase(Locale.ROOT));
+                      });
                   }).mapToDouble((e) -> {
                      return ((Sell.Stats) e.getValue()).revenue;
                   }).sum();
@@ -1388,9 +1432,9 @@ public final class Sell extends JavaPlugin implements Listener {
                this.getServer().getPluginManager().callEvent(new com.epixdevelopment.sellworth.api.events.SellWorthSellEvent(p, payout, itemsSold));
                this.notifySale(p, payout, itemsSold);
             }
-         }
-      }
-   }
+          }
+       }
+    }
 
    private String getPotionKey(ItemStack item) {
       ItemMeta var3 = item.getItemMeta();
@@ -1419,6 +1463,23 @@ public final class Sell extends JavaPlugin implements Listener {
    }
 
    public double calculateItemWorth(ItemStack item) {
+      return this.calculateItemWorth((org.bukkit.entity.Player) null, item);
+   }
+
+   public double calculateItemWorth(org.bukkit.entity.Player player, ItemStack item) {
+      if (this.mmoItemsHook != null && this.mmoItemsHook.isEnabled()) {
+         Double mmoPrice = this.mmoItemsHook.getPrice(item);
+         if (mmoPrice != null) {
+            return mmoPrice * (double) item.getAmount();
+         }
+      }
+      if (this.customFishingHook != null && this.customFishingHook.isEnabled()) {
+         Double cfPrice = this.customFishingHook.getPrice(player, item);
+         if (cfPrice != null) {
+            return cfPrice * (double) item.getAmount();
+         }
+      }
+
       ItemMeta im = item.getItemMeta();
       double base;
       String baseKey;
@@ -1479,13 +1540,33 @@ public final class Sell extends JavaPlugin implements Listener {
             for (int var13 = 0; var13 < var12; ++var13) {
                ItemStack inside = var26[var13];
                if (inside != null && inside.getType() != Material.AIR) {
-                  total += this.calculateItemWorth(inside);
+                  total += this.calculateItemWorth(player, inside);
                }
             }
          }
       }
 
       return total;
+   }
+
+   public String getItemKey(ItemStack item) {
+      if (this.customFishingHook != null && this.customFishingHook.isCustomFishingItem(item)) {
+         try {
+            String cfId = net.momirealms.customfishing.api.BukkitCustomFishingPlugin.getInstance().getItemManager().getCustomFishingItemID(item);
+            if (cfId != null) {
+               return "customfishing_" + cfId.toLowerCase(Locale.ROOT);
+            }
+         } catch (Throwable ignored) {}
+      }
+      if (this.mmoItemsHook != null && this.mmoItemsHook.isEnabled()) {
+         try {
+            io.lumine.mythic.lib.api.item.NBTItem nbt = io.lumine.mythic.lib.api.item.NBTItem.get(item);
+            if (nbt != null && nbt.hasType()) {
+               return "mmoitems_" + nbt.getType().toLowerCase(Locale.ROOT) + "_" + nbt.getString("MMOITEMS_ITEM_ID").toLowerCase(Locale.ROOT);
+            }
+         } catch (Throwable ignored) {}
+      }
+      return item.getType().name().toLowerCase(Locale.ROOT);
    }
 
    public void resetPlayerData(UUID uuid) {
@@ -1570,7 +1651,8 @@ public final class Sell extends JavaPlugin implements Listener {
 
       for (Entry<String, List<String>> entry : categoryItems.entrySet()) {
          for (String key : keysToCheck) {
-            if (entry.getValue().contains(key)) {
+            if (entry.getValue().contains(key)
+                || (this.customFishingHook != null && this.customFishingHook.isCustomFishingItem(item) && entry.getKey().equalsIgnoreCase("tropical_fish"))) {
                totalMult += getSellMultiplier(p.getUniqueId(), entry.getKey());
                found = true;
                break;
