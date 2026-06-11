@@ -53,7 +53,7 @@ public class ProgressGui {
    }
 
    public void loadConfig() {
-      ConfigurationSection cfg = this.plugin.getConfig().getConfigurationSection("progress-menu");
+      ConfigurationSection cfg = this.plugin.getConfigManager().getGuiConfig("progress-menu");
       if (cfg != null) {
          this.defaultTitle = Utils.formatColors(cfg.getString("title", "%item% Progress"));
          this.customTitles.clear();

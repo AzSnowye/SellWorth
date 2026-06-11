@@ -1,0 +1,58 @@
+﻿title: '&7Harga Item (Halaman %page%)'
+rows: 6
+
+previous:
+  previous-page-material: ARROW
+  previous-page-slot: 45
+  previous-page-displayname: '&aKembali'
+  previous-page-lore:
+    - '&fKlik untuk kembali'
+
+next:
+  next-page-material: ARROW
+  next-page-slot: 53
+  next-page-displayname: '&aBerikutnya'
+  next-page-lore:
+    - '&fKlik untuk maju'
+
+sort:
+  material: HOPPER
+  slot: 48
+  displayname: '&aUrutkan'
+  NotCurrentColor: '&f'
+  CurrentColor: '&#34ee80'
+  lore:
+    - Harga Tertinggi
+    - Harga Terendah
+    - Nama
+
+refresh:
+  material: ANVIL
+  slot: 49
+  displayname: '&aSegarkan'
+  lore:
+    - '&fKlik untuk menyegarkan'
+
+filter:
+  material: CAULDRON
+  slot: 50
+  displayname: '&#34ee80Filter'
+  NotCurrentColor: '&f'
+  CurrentColor: '&#34ee80'
+  lore:
+    - all
+    - crops
+    - bone
+    - diamond
+    - oak_leaves
+    - netherite_helmet
+    - tropical_fish
+    - book
+    - brewing_stand
+    - brick
+
+items:
+  displayname: '&r%ItemName%'
+  lore:
+    - '&fHarga: &#34ee80$%amount%'
+

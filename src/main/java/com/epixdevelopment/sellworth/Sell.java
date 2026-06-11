@@ -1,6 +1,6 @@
 package com.epixdevelopment.sellworth;
 
-import com.epixdevelopment.sellworth.commands.SellAxeCommand;
+
 import com.epixdevelopment.sellworth.commands.SellCommand;
 import com.epixdevelopment.sellworth.commands.SellHistoryCommand;
 import com.epixdevelopment.sellworth.commands.ToggleWorthCommand;
@@ -22,7 +22,7 @@ import com.epixdevelopment.sellworth.listeners.CleanupListener;
 import com.epixdevelopment.sellworth.listeners.GuiClickListener;
 import com.epixdevelopment.sellworth.listeners.HistoryClickListener;
 import com.epixdevelopment.sellworth.listeners.InventoryClickListener;
-import com.epixdevelopment.sellworth.listeners.SellAxe;
+
 import com.epixdevelopment.sellworth.listeners.SellListener;
 import com.epixdevelopment.sellworth.listeners.SellMenuClickListener;
 import com.epixdevelopment.sellworth.tracker.HistoryTracker;
@@ -124,8 +124,7 @@ public final class Sell extends JavaPlugin implements Listener {
    public final Map<String, List<String>> categoryItems = new HashMap();
    private final Map<String, Double> itemValues = new HashMap();
    private SellDataStore dataStore;
-   private NamespacedKey sellAxeKey;
-   private NamespacedKey expiryKey;
+
    private final Set<UUID> toggleWorthDisabled = new HashSet();
    private final Map<UUID, Long> urgentModePlayers = new HashMap();
    private BukkitRunnable minuteTimer;
@@ -296,13 +295,13 @@ public final class Sell extends JavaPlugin implements Listener {
       String itemsStr = String.valueOf(itemsSold);
       String title;
       if (modes.contains(Sell.SellNotifyMode.CHAT)) {
-         title = Utils.formatColors(this.getConfig().getString("sell-menu.chat-message", "&#34ee80+$%amount%"))
+         title = Utils.formatColors(this.getConfigManager().getGuiConfig("sell-menu").getString("chat-message", "&#34ee80+$%amount%"))
                .replace("%amount%", amt).replace("%items%", itemsStr);
          p.sendMessage(title);
       }
 
       if (modes.contains(Sell.SellNotifyMode.ACTIONBAR)) {
-         title = Utils.formatColors(this.getConfig().getString("sell-menu.actionbar-message", "&#34ee80+$%amount%"))
+         title = Utils.formatColors(this.getConfigManager().getGuiConfig("sell-menu").getString("actionbar-message", "&#34ee80+$%amount%"))
                .replace("%amount%", amt).replace("%items%", itemsStr);
          p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(title));
       }
@@ -465,9 +464,6 @@ public final class Sell extends JavaPlugin implements Listener {
 
          this.transactionLog = new com.epixdevelopment.sellworth.util.TransactionLog(this);
 
-         this.sellAxeKey = new NamespacedKey(this, "sell_wand");
-         this.expiryKey = new NamespacedKey(this, "sell_wand_expiry");
-
          this.getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
          this.getServer().getPluginManager().registerEvents(new ChatInputListener(this), this);
          this.getServer().getPluginManager().registerEvents(this, this);
@@ -480,8 +476,7 @@ public final class Sell extends JavaPlugin implements Listener {
          new SellCommand(this);
          new WorthCommand(this);
          new ToggleWorthCommand(this);
-         new SellAxeCommand(this, this.sellAxeKey, this.expiryKey);
-         new SellAxe(this, this.sellAxeKey, this.expiryKey);
+
 
          setupSellMultiCommand();
 
@@ -529,7 +524,7 @@ public final class Sell extends JavaPlugin implements Listener {
          }
 
          if (this.getConfig().getBoolean("sell-axe.use-countdown", true)) {
-            this.setupSellAxeCountdown();
+
          }
 
          com.epixdevelopment.sellworth.integration.SeriaBoosterHook.init();
@@ -588,193 +583,7 @@ public final class Sell extends JavaPlugin implements Listener {
       }
    }
 
-   private void setupSellAxeCountdown() {
-      minuteTimer = new BukkitRunnable() {
-         @Override
-         public void run() {
-            if (!isEnabled()) {
-               this.cancel();
-               return;
-            }
 
-            try {
-               long now = System.currentTimeMillis();
-               processAllPlayers(now, false); // false = minute mode
-               checkUrgentMode(now);
-            } catch (Exception e) {
-               getLogger().warning("Error in minute timer: " + e.getMessage());
-               e.printStackTrace();
-            }
-         }
-      };
-
-      secondTimer = new BukkitRunnable() {
-         @Override
-         public void run() {
-            if (!isEnabled()) {
-               this.cancel();
-               return;
-            }
-
-            try {
-               long now = System.currentTimeMillis();
-               processAllPlayers(now, true); // true = urgent mode
-               checkUrgentMode(now);
-            } catch (Exception e) {
-               getLogger().warning("Error in second timer: " + e.getMessage());
-               e.printStackTrace();
-            }
-         }
-      };
-
-      minuteTimer.runTaskTimer(this, 0L, 1200L); // Every minute
-   }
-
-   private void processAllPlayers(long now, boolean urgentMode) {
-      // sweep all players to refresh wand timers and lore; urgentMode=true when
-      // countdown is low
-      for (Player player : getServer().getOnlinePlayers()) {
-         try {
-            boolean inventoryUpdated = false;
-
-            ItemStack itemInHand = player.getInventory().getItemInMainHand();
-            if (itemInHand != null && itemInHand.getType() != Material.AIR) {
-               if (updateSellAxeItem(player, itemInHand, now, urgentMode)) {
-                  inventoryUpdated = true;
-               }
-            }
-
-            Inventory inv = player.getInventory();
-            for (int slot = 0; slot < inv.getSize(); slot++) {
-               ItemStack item = inv.getItem(slot);
-               if (item != null && !item.getType().isAir()) {
-                  if (updateSellAxeItem(player, item, now, urgentMode)) {
-                     inventoryUpdated = true;
-                  }
-               }
-            }
-
-            if (inventoryUpdated) {
-               player.updateInventory();
-            }
-         } catch (Exception e) {
-            getLogger()
-                  .warning("Error processing player " + player.getName() + " in sell axe countdown: " + e.getMessage());
-         }
-      }
-   }
-
-   private void checkUrgentMode(long now) {
-      Set<UUID> playersInUrgentMode = new HashSet<>();
-
-      for (Player player : getServer().getOnlinePlayers()) {
-         try {
-            if (hasSellAxeWithLowTime(player, now)) {
-               playersInUrgentMode.add(player.getUniqueId());
-            }
-         } catch (Exception e) {
-            getLogger().warning("Error checking urgent mode for " + player.getName() + ": " + e.getMessage());
-         }
-      }
-
-      if (!playersInUrgentMode.isEmpty()) {
-         try {
-            // spin up the fast timer only when someone is close to expiry
-            if (secondTimer == null) {
-               secondTimer.runTaskTimer(this, 0L, 20L); // Every second
-            } else {
-               try {
-                  boolean isCancelled = secondTimer.isCancelled();
-                  if (isCancelled) {
-                     secondTimer.runTaskTimer(this, 0L, 20L); // Every second
-                  }
-               } catch (IllegalStateException e) {
-                  secondTimer.runTaskTimer(this, 0L, 20L);
-               }
-            }
-         } catch (IllegalStateException e) {
-         }
-      } else if (secondTimer != null) {
-         try {
-            // nobody in urgent mode, kill the fast timer to save ticks
-            if (!secondTimer.isCancelled()) {
-               secondTimer.cancel();
-            }
-         } catch (IllegalStateException e) {
-         }
-      }
-
-      urgentModePlayers.clear();
-      for (UUID uuid : playersInUrgentMode) {
-         urgentModePlayers.put(uuid, now);
-      }
-   }
-
-   private boolean hasSellAxeWithLowTime(Player player, long now) {
-      ItemStack itemInHand = player.getInventory().getItemInMainHand();
-      if (itemInHand != null && itemInHand.getType() != Material.AIR) {
-         if (isSellAxeWithLowTime(itemInHand, now)) {
-            return true;
-         }
-      }
-
-      Inventory inv = player.getInventory();
-      for (int slot = 0; slot < inv.getSize(); slot++) {
-         ItemStack item = inv.getItem(slot);
-         if (item != null && !item.getType().isAir()) {
-            if (isSellAxeWithLowTime(item, now)) {
-               return true;
-            }
-         }
-      }
-
-      return false;
-   }
-
-   private boolean isSellAxeWithLowTime(ItemStack item, long now) {
-      ItemMeta meta = item.getItemMeta();
-      if (meta != null) {
-         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-         Byte marker = pdc.get(sellAxeKey, PersistentDataType.BYTE);
-
-         if (marker != null && marker == 1) {
-            Long expiry = pdc.get(expiryKey, PersistentDataType.LONG);
-            if (expiry != null) {
-               long remainingMillis = expiry - now;
-               long remainingSeconds = remainingMillis / 1000L;
-               return remainingSeconds <= 59L; // Urgent mode: 59 seconds or less
-            }
-         }
-      }
-      return false;
-   }
-
-   private boolean updateSellAxeItem(Player player, ItemStack item, long now, boolean urgentMode) {
-      try {
-         ItemMeta meta = item.getItemMeta();
-         if (meta != null) {
-            PersistentDataContainer pdc = meta.getPersistentDataContainer();
-            Byte marker = pdc.get(sellAxeKey, PersistentDataType.BYTE);
-
-            if (marker != null && marker == 1) {
-               Long expiry = pdc.get(expiryKey, PersistentDataType.LONG);
-               if (expiry != null) {
-                  if (now >= expiry) {
-                     player.getInventory().removeItem(item);
-                     player.sendMessage(Utils.formatColors("&cYour Sell Wand has expired and been removed."));
-                     return true;
-                  } else {
-                     return updateSellAxeLore(player, item, now, urgentMode);
-                  }
-               }
-            }
-         }
-         return false;
-      } catch (Exception e) {
-         getLogger().warning("Error updating sell axe item: " + e.getMessage());
-         return false;
-      }
-   }
 
    @EventHandler(ignoreCancelled = true)
    public void onPlayerCommandPreprocess(org.bukkit.event.player.PlayerCommandPreprocessEvent event) {
@@ -1116,8 +925,8 @@ public final class Sell extends JavaPlugin implements Listener {
    public void onInventoryClose(InventoryCloseEvent event) {
       Player p = (Player) event.getPlayer();
       String openTitle = event.getView().getTitle();
-      String classicTitle = Utils.formatColors(this.getConfig().getString("sell-menu.title", "&aSell Items"));
-      String newTitle = Utils.formatColors(this.getConfig().getString("new-sell-menu.title", "&aSell Items"));
+      String classicTitle = Utils.formatColors(this.getConfigManager().getGuiConfig("sell-menu").getString("title", "&aSell Items"));
+      String newTitle = Utils.formatColors(this.getConfigManager().getGuiConfig("new-sell-menu").getString("title", "&aSell Items"));
       if (!openTitle.equals(newTitle)) {
          if (openTitle.equals(classicTitle)) {
             Inventory inv = event.getInventory();
@@ -1151,7 +960,8 @@ public final class Sell extends JavaPlugin implements Listener {
                if (item != null && !item.getType().isAir()) {
                   mat = item.getType().name();
                   isShulkerBox = mat.endsWith("_SHULKER_BOX") || item.getType() == Material.SHULKER_BOX;
-                  if (disabledSet.contains(mat) && !isShulkerBox) {
+                  boolean mmoItemUnsellable = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item);
+                  if ((disabledSet.contains(mat) || mmoItemUnsellable) && !isShulkerBox) {
                      Map<Integer, ItemStack> leftover = p.getInventory().addItem(new ItemStack[] { item });
                      leftover.values().forEach((d) -> {
                         p.getWorld().dropItemNaturally(p.getLocation(), d);
@@ -1180,7 +990,8 @@ public final class Sell extends JavaPlugin implements Listener {
                   ShulkerBox boxState;
                   BlockState var56;
                   int lvl;
-                  if (isShulkerBox && disabledSet.contains(mat)) {
+                  boolean mmoItemUnsellableBox = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item);
+                  if (isShulkerBox && (disabledSet.contains(mat) || mmoItemUnsellableBox)) {
                      im = item.getItemMeta();
                      if (im instanceof BlockStateMeta) {
                         bsm = (BlockStateMeta) im;
@@ -1195,7 +1006,8 @@ public final class Sell extends JavaPlugin implements Listener {
                               ItemStack inside = var61[var67];
                               if (inside != null && !inside.getType().isAir()) {
                                  String insideMat = inside.getType().name();
-                                 if (!disabledSet.contains(insideMat)) {
+                                 boolean insideUnsellable = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(inside);
+                                 if (!disabledSet.contains(insideMat) && !insideUnsellable) {
                                     ItemMeta insideMeta = inside.getItemMeta();
                                     if (inside.getType() == Material.ENCHANTED_BOOK
                                           && insideMeta instanceof EnchantmentStorageMeta) {
@@ -1339,7 +1151,7 @@ public final class Sell extends JavaPlugin implements Listener {
                            }
                         }
                      }
-                  } else if (!disabledSet.contains(mat)) {
+                  } else if (!disabledSet.contains(mat) && !(this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item))) {
                      im = item.getItemMeta();
                      if (item.getType() == Material.ENCHANTED_BOOK && im instanceof EnchantmentStorageMeta) {
                         EnchantmentStorageMeta esm = (EnchantmentStorageMeta) im;
@@ -1423,7 +1235,7 @@ public final class Sell extends JavaPlugin implements Listener {
                }
 
                Sound soundOnClose = this.resolveSound(
-                     this.getConfig().getString("sell-menu.sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP"),
+                     this.getConfigManager().getGuiConfig("sell-menu").getString("sound-on-close", "ENTITY_EXPERIENCE_ORB_PICKUP"),
                      Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
                p.playSound(p.getLocation(), soundOnClose, 1.0F, 1.0F);
                long itemsSold = Math.round(sold.values().stream().mapToDouble((s) -> {
@@ -1728,36 +1540,12 @@ public final class Sell extends JavaPlugin implements Listener {
       return t;
    }
 
-   private String formatDuration(long ms) {
-      return formatDuration(ms, false);
+   public ConfigManager getConfigManager() {
+      return this.configManager;
    }
 
-   private String formatDuration(long ms, boolean urgentMode) {
-      long totalSeconds = ms / 1000L;
-      long days = totalSeconds / 86400L;
-      long hours = totalSeconds % 86400L / 3600L;
-      long minutes = totalSeconds % 3600L / 60L;
-      long seconds = totalSeconds % 60L;
-
-      if (urgentMode || totalSeconds <= 59) {
-         if (days > 0) {
-            return days + "d " + hours + "h " + minutes + "m " + seconds + "s";
-         } else if (hours > 0) {
-            return hours + "h " + minutes + "m " + seconds + "s";
-         } else if (minutes > 0) {
-            return minutes + "m " + seconds + "s";
-         } else {
-            return seconds + "s";
-         }
-      } else {
-         if (days > 0) {
-            return days + "d " + hours + "h " + minutes + "m";
-         } else if (hours > 0) {
-            return hours + "h " + minutes + "m";
-         } else {
-            return minutes + "m";
-         }
-      }
+   public boolean isTrackTotalSold() {
+      return this.getConfig().getBoolean("use-multipliers", true);
    }
 
    public boolean isUseMultipliers() {
@@ -1774,48 +1562,7 @@ public final class Sell extends JavaPlugin implements Listener {
       }
    }
 
-   private boolean updateSellAxeLore(Player player, ItemStack item, long currentTime, boolean urgentMode) {
-      if (item == null || item.getType() == Material.AIR) {
-         return false;
-      }
 
-      ItemMeta meta = item.getItemMeta();
-      if (meta == null) {
-         return false;
-      }
-
-      PersistentDataContainer pdc = meta.getPersistentDataContainer();
-      if (!pdc.has(sellAxeKey, PersistentDataType.BYTE)) {
-         return false;
-      }
-
-      Long expiry = pdc.get(expiryKey, PersistentDataType.LONG);
-      if (expiry == null) {
-         return false;
-      }
-
-      if (currentTime >= expiry) {
-         return false; // Item has expired, will be handled by the caller
-      }
-
-      long remainingMillis = expiry - currentTime;
-      String formatted = formatDuration(remainingMillis, urgentMode);
-      List<String> template = getConfig().getStringList("sell-axe.lore");
-      List<String> newLore = new ArrayList<>();
-
-      for (String line : template) {
-         String replaced = line.replace("%countdown%", formatted);
-         newLore.add(Utils.formatColors(replaced));
-      }
-
-      if (!newLore.equals(meta.getLore())) {
-         meta.setLore(newLore);
-         item.setItemMeta(meta);
-         return true;
-      }
-
-      return false;
-   }
 
    public static class Stats {
       public double count;

@@ -1,0 +1,105 @@
+﻿loading-color: '&#34ee80'
+complete-loading-color: '&#34ee80'
+bar-length: 20
+bar-symbol: '&m '
+title: '&7Pengali Penjualan'
+rows: 3
+actionbar-message: '&#34ee80+$%amount%'
+chat-message: '&#34ee80+$%amount%'
+
+items:
+  - CROPS
+  - BONE
+  - DIAMOND
+  - OAK_LEAVES
+  - NETHERITE_HELMET
+  - TROPICAL_FISH
+  - BOOK
+  - BREWING_STAND
+  - BRICK
+
+item-settings:
+  CROPS:
+    slot: 9
+    displayname: '&aCrops'
+    material: WHEAT
+    lore:
+      - '&7Jual hasil tani dan bahan pertanian untuk'
+      - '&7meningkatkan pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+
+  BONE:
+    slot: 10
+    displayname: '&aMob Drops'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  DIAMOND:
+    slot: 11
+    displayname: '&aOres'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  OAK_LEAVES:
+    slot: 12
+    displayname: '&aNatural Items'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  NETHERITE_HELMET:
+    slot: 13
+    displayname: '&aArmor and Tools'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  TROPICAL_FISH:
+    slot: 14
+    displayname: '&aFish'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  BOOK:
+    slot: 15
+    displayname: '&aBooks'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  BREWING_STAND:
+    slot: 16
+    displayname: '&aPotions'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+  BRICK:
+    slot: 17
+    displayname: '&aBlocks'
+    lore:
+      - '&7Jual item untuk meningkatkan'
+      - '&7pengali penjualan Anda!'
+      - ''
+      - '&7Kemajuan ke &f%next-multi%x'
+      - '%progress-bar%&r &#34ee80(%progress%%)'
+

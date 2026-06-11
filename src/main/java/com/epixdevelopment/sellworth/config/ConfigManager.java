@@ -13,6 +13,8 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.HashMap;
 
 public class ConfigManager {
     private String defaultConfig;
@@ -20,10 +22,16 @@ public class ConfigManager {
     private final Plugin plugin;
     private File configFile;
     private FileConfiguration config;
+    private File categoriesFile;
+    private FileConfiguration categoriesConfig;
+    private File guisFolder;
+    private Map<String, FileConfiguration> guiConfigs = new HashMap<>();
 
     public ConfigManager(Plugin plugin) {
         this.plugin = plugin;
         this.configFile = new File(plugin.getDataFolder(), "config.yml");
+        this.categoriesFile = new File(plugin.getDataFolder(), "categories.yml");
+        this.guisFolder = new File(plugin.getDataFolder(), "guis");
     }
 
     public void setup() {
@@ -1706,6 +1714,24 @@ categories:
             }
         }
 
+        if (!categoriesFile.exists()) {
+            try {
+                copyPackagedCategories();
+                plugin.getLogger().info("Created new categories file from packaged resource categories.yml.");
+            } catch (IOException e) {
+                plugin.getLogger().severe("Could not create categories file: " + e.getMessage());
+            }
+        }
+
+        if (!guisFolder.exists()) {
+            guisFolder.mkdirs();
+        }
+        try {
+            copyPackagedGuis();
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not copy packaged GUIs: " + e.getMessage());
+        }
+
         reloadConfig();
     }
 
@@ -1719,11 +1745,40 @@ categories:
     public void reloadConfig() {
         config = YamlConfiguration.loadConfiguration(configFile);
         mergePackagedDefaultsFromResource();
+        reloadCategoriesConfig();
+        reloadGuis();
+    }
+
+    public void reloadCategoriesConfig() {
+        if (categoriesFile.exists()) {
+            categoriesConfig = YamlConfiguration.loadConfiguration(categoriesFile);
+            mergePackagedDefaultsFromCategoriesResource();
+        } else {
+            categoriesConfig = new YamlConfiguration();
+        }
+    }
+
+    public FileConfiguration getCategoriesConfig() {
+        if (categoriesConfig == null) {
+            reloadCategoriesConfig();
+        }
+        return categoriesConfig;
+    }
+
+    public void saveCategoriesConfig() {
+        try {
+            getCategoriesConfig().save(categoriesFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not save categories config: " + e.getMessage());
+        }
     }
 
     public void generateFullConfig() {
         try {
             copyPackagedConfig();
+            copyPackagedCategories();
+            if (!guisFolder.exists()) guisFolder.mkdirs();
+            copyPackagedGuis();
             reloadConfig();
         } catch (Exception e) {
             // if stuff blows up, we still try to drop a usable config so u can edit it
@@ -1733,6 +1788,9 @@ categories:
             // If generation fails, create a basic config to prevent further errors
             try {
                 copyPackagedConfig();
+                copyPackagedCategories();
+                if (!guisFolder.exists()) guisFolder.mkdirs();
+                copyPackagedGuis();
                 reloadConfig();
             } catch (Exception ex) {
                 plugin.getLogger().severe("Failed to create basic config: " + ex.getMessage());
@@ -1769,6 +1827,71 @@ categories:
         } catch (Exception e) {
             plugin.getLogger().warning("Could not merge packaged defaults: " + e.getMessage());
         }
+    }
+
+    private void mergePackagedDefaultsFromCategoriesResource() {
+        try (InputStream in = plugin.getResource("categories.yml")) {
+            if (in == null || this.categoriesConfig == null) {
+                return;
+            }
+
+            YamlConfiguration resourceCfg = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+            if (mergeMissingKeys(resourceCfg, this.categoriesConfig, "")) {
+                saveCategoriesConfig();
+                plugin.getLogger().info("Merged missing defaults from packaged categories.yml into existing categories.");
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not merge packaged categories defaults: " + e.getMessage());
+        }
+    }
+
+    private void copyPackagedCategories() throws IOException {
+        if (!categoriesFile.getParentFile().exists()) {
+            categoriesFile.getParentFile().mkdirs();
+        }
+
+        try (InputStream in = plugin.getResource("categories.yml")) {
+            if (in == null) {
+                throw new IOException("Packaged categories.yml resource is missing.");
+            }
+
+            Files.copy(in, categoriesFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private void copyPackagedGuis() throws IOException {
+        String[] guiFiles = {"category-menu.yml", "new-sell-menu.yml", "sell-menu.yml", "progress-menu.yml", "sellhistory-menu.yml", "item-prices-menu.yml"};
+        for (String file : guiFiles) {
+            File target = new File(guisFolder, file);
+            if (!target.exists()) {
+                try (InputStream in = plugin.getResource("guis/" + file)) {
+                    if (in != null) {
+                        Files.copy(in, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            }
+        }
+    }
+
+    public void reloadGuis() {
+        guiConfigs.clear();
+        if (guisFolder.exists() && guisFolder.isDirectory()) {
+            File[] files = guisFolder.listFiles((dir, name) -> name.endsWith(".yml"));
+            if (files != null) {
+                for (File file : files) {
+                    String name = file.getName().replace(".yml", "");
+                    FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+                    guiConfigs.put(name, cfg);
+                }
+            }
+        }
+    }
+
+    public FileConfiguration getGuiConfig(String name) {
+        if (guiConfigs.containsKey(name)) {
+            return guiConfigs.get(name);
+        }
+        return new YamlConfiguration(); // empty fallback
     }
 
     private boolean mergeMissingKeys(FileConfiguration source, FileConfiguration target, String path) {

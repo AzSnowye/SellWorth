@@ -70,8 +70,8 @@ public class ResetConfirmationGui implements Listener {
          inv.setItem(11, declinePane);
       }
 
-      List<String> categoryOrder = this.plugin.getConfig().getStringList("sell-menu.items");
-      ConfigurationSection settingsSection = this.plugin.getConfig().getConfigurationSection("sell-menu.item-settings");
+      List<String> categoryOrder = this.plugin.getConfigManager().getGuiConfig("sell-menu").getStringList("items");
+      ConfigurationSection settingsSection = this.plugin.getConfigManager().getGuiConfig("sell-menu").getConfigurationSection("item-settings");
 
       for(int i = 0; i < categoryOrder.size() && i < 9; ++i) {
          String catKey = (String)categoryOrder.get(i);

@@ -40,8 +40,8 @@ public class SellMenuClickListener implements Listener {
       if (e.getWhoClicked() instanceof Player) {
          Player p = (Player)e.getWhoClicked();
          String title = e.getView().getTitle();
-         String oldTitle = Utils.formatColors(this.plugin.getConfig().getString("sell-menu.title", ""));
-         String newTitle = Utils.formatColors(this.plugin.getConfig().getString("new-sell-menu.title", ""));
+         String oldTitle = Utils.formatColors(this.plugin.getConfigManager().getGuiConfig("sell-menu").getString("title", ""));
+         String newTitle = Utils.formatColors(this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getString("title", ""));
          boolean isOld = title.equals(oldTitle);
          boolean isNew = title.equals(newTitle);
          if (isOld || isNew) {
@@ -55,7 +55,7 @@ public class SellMenuClickListener implements Listener {
                      if (slot >= bottomStart && slot < bottomStart + 9) {
                         e.setCancelled(true);
                         p.playSound(p.getLocation(), this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK), 1.0F, 1.0F);
-                        List<String> items = this.plugin.getConfig().getStringList("sell-menu.items");
+                        List<String> items = this.plugin.getConfigManager().getGuiConfig("sell-menu").getStringList("items");
                         int idx = slot - bottomStart;
                         if (idx >= 0 && idx < items.size()) {
                            this.plugin.getProgressGui().open(p, (String)items.get(idx));
@@ -69,12 +69,12 @@ public class SellMenuClickListener implements Listener {
                Iterator var12;
                String cat;
                int s;
-               if (this.plugin.getConfig().isConfigurationSection("new-sell-menu.item-settings")) {
-                  var12 = this.plugin.getConfig().getConfigurationSection("new-sell-menu.item-settings").getKeys(false).iterator();
+               if (this.plugin.getConfigManager().getGuiConfig("new-sell-menu").isConfigurationSection("item-settings")) {
+                  var12 = this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getConfigurationSection("item-settings").getKeys(false).iterator();
 
                   while(var12.hasNext()) {
                      cat = (String)var12.next();
-                     s = this.plugin.getConfig().getInt("new-sell-menu.item-settings." + cat + ".slot", -1);
+                     s = this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getInt("item-settings." + cat + ".slot", -1);
                      if (s >= 0) {
                         buttonSlots.add(s);
                      }
@@ -87,11 +87,11 @@ public class SellMenuClickListener implements Listener {
                   } else {
                      e.setCancelled(true);
                      p.playSound(p.getLocation(), this.plugin.resolveSound(this.plugin.getConfig().getString("sounds.click-sound", "UI_BUTTON_CLICK"), Sound.UI_BUTTON_CLICK), 1.0F, 1.0F);
-                     var12 = this.plugin.getConfig().getConfigurationSection("new-sell-menu.item-settings").getKeys(false).iterator();
+                     var12 = this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getConfigurationSection("item-settings").getKeys(false).iterator();
 
                      while(var12.hasNext()) {
                         cat = (String)var12.next();
-                        s = this.plugin.getConfig().getInt("new-sell-menu.item-settings." + cat + ".slot", -1);
+                        s = this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getInt("item-settings." + cat + ".slot", -1);
                         if (s == slot) {
                            this.plugin.getProgressGui().open(p, cat);
                            break;
@@ -120,8 +120,8 @@ public class SellMenuClickListener implements Listener {
    public void onDrag(InventoryDragEvent e) {
       if (e.getWhoClicked() instanceof Player) {
          String title = e.getView().getTitle();
-         String oldTitle = Utils.formatColors(this.plugin.getConfig().getString("sell-menu.title", ""));
-         String newTitle = Utils.formatColors(this.plugin.getConfig().getString("new-sell-menu.title", ""));
+         String oldTitle = Utils.formatColors(this.plugin.getConfigManager().getGuiConfig("sell-menu").getString("title", ""));
+         String newTitle = Utils.formatColors(this.plugin.getConfigManager().getGuiConfig("new-sell-menu").getString("title", ""));
          boolean isOld = title.equals(oldTitle);
          boolean isNew = title.equals(newTitle);
          if (isOld || isNew) {

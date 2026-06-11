@@ -81,8 +81,8 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                return true;
             } else {
                category = args[1].toLowerCase(Locale.ROOT);
-               Configuration cfg = this.plugin.getConfig();
-               ConfigurationSection catsSection = cfg.getConfigurationSection("categories");
+               org.bukkit.configuration.file.FileConfiguration catCfg = this.plugin.getConfigManager().getCategoriesConfig();
+               ConfigurationSection catsSection = catCfg.getConfigurationSection("categories");
                if (catsSection != null && catsSection.getKeys(false).contains(category)) {
                   String entryKey = args[2].toLowerCase(Locale.ROOT).replace(' ', '_');
                   if (!entryKey.endsWith("-value")) {
@@ -90,7 +90,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                   }
 
                   String path = "categories." + category;
-                  List<Map<?, ?>> rawList = cfg.getMapList(path);
+                  List<Map<?, ?>> rawList = catCfg.getMapList(path);
                   List<Map<String, Object>> newList = new ArrayList();
                   Iterator varRaw = rawList.iterator();
 
@@ -116,8 +116,8 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                      return true;
                   }
 
-                  cfg.set(path, newList);
-                  this.plugin.saveConfig();
+                  catCfg.set(path, newList);
+                  this.plugin.getConfigManager().saveCategoriesConfig();
                   this.plugin.reloadPlugin();
                   sender.sendMessage(Utils.formatColors("&aRemoved &e" + entryKey + " &afrom category &e" + category));
                   return true;
@@ -135,8 +135,8 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                return true;
             } else {
                category = args[1].toLowerCase(Locale.ROOT);
-               Configuration cfg = this.plugin.getConfig();
-               ConfigurationSection catsSection = cfg.getConfigurationSection("categories");
+               org.bukkit.configuration.file.FileConfiguration catCfg = this.plugin.getConfigManager().getCategoriesConfig();
+               ConfigurationSection catsSection = catCfg.getConfigurationSection("categories");
                if (catsSection != null && catsSection.getKeys(false).contains(category)) {
                   double price;
                   try {
@@ -215,7 +215,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                      }
 
                      String path = "categories." + category;
-                     List<Map<?, ?>> rawList = cfg.getMapList(path);
+                     List<Map<?, ?>> rawList = catCfg.getMapList(path);
                      List<Map<String, Object>> newList = new ArrayList();
                      Iterator var35 = rawList.iterator();
 
@@ -243,8 +243,8 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                         newList.add(toAdd);
                      }
 
-                     cfg.set(path, newList);
-                     this.plugin.saveConfig();
+                     catCfg.set(path, newList);
+                     this.plugin.getConfigManager().saveCategoriesConfig();
                      this.plugin.reloadPlugin();
                      sender.sendMessage(Utils.formatColors("&aSet &e" + entryKey + " &ain category &e" + category + " &ato &e" + price));
                      return true;
@@ -277,7 +277,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
       } else {
          if (args.length == 2) {
             if (args[0].equalsIgnoreCase("addhanditem")) {
-               ConfigurationSection cats = this.plugin.getConfig().getConfigurationSection("categories");
+               ConfigurationSection cats = this.plugin.getConfigManager().getCategoriesConfig().getConfigurationSection("categories");
                if (cats == null) {
                   return Collections.emptyList();
                }
@@ -286,7 +286,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
             }
 
             if (args[0].equalsIgnoreCase("removeitem")) {
-               ConfigurationSection cats = this.plugin.getConfig().getConfigurationSection("categories");
+               ConfigurationSection cats = this.plugin.getConfigManager().getCategoriesConfig().getConfigurationSection("categories");
                if (cats == null) {
                   return Collections.emptyList();
                }
@@ -309,7 +309,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
 
          if (args.length == 3 && args[0].equalsIgnoreCase("removeitem")) {
             String category = args[1].toLowerCase(Locale.ROOT);
-            List<Map<?, ?>> rawList = this.plugin.getConfig().getMapList("categories." + category);
+            List<Map<?, ?>> rawList = this.plugin.getConfigManager().getCategoriesConfig().getMapList("categories." + category);
             List<String> keys = new ArrayList();
             Iterator var6 = rawList.iterator();
 

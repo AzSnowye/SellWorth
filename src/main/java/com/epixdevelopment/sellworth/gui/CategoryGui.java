@@ -89,7 +89,7 @@ public class CategoryGui {
       this.plugin = plugin;
       this.categoryKey = categoryKey.toLowerCase(Locale.ROOT);
       this.PDC_CATEGORY = new NamespacedKey(plugin, "category");
-      ConfigurationSection cfg = plugin.getConfig().getConfigurationSection("category-menu");
+      ConfigurationSection cfg = plugin.getConfigManager().getGuiConfig("category-menu");
       this.rows = cfg.getInt("rows", 6);
       this.defaultTitleTpl = Utils.formatColors(cfg.getString("title", "%item% Items"));
       ConfigurationSection tsec = cfg.getConfigurationSection("titles");
@@ -123,7 +123,7 @@ public class CategoryGui {
       this.itemLoreTpl = cfg.getStringList("item.lore");
       String configured = plugin.getConfig().getString("sounds.page-switch", "ITEM_BOOK_PAGE_TURN");
       this.pageSwitchSoundName = configured != null ? configured.toUpperCase(Locale.ROOT) : "ITEM_BOOK_PAGE_TURN";
-      Object rawNode = plugin.getConfig().get("categories." + this.categoryKey);
+      Object rawNode = plugin.getConfigManager().getCategoriesConfig().get("categories." + this.categoryKey);
       Iterator var9;
       if (rawNode instanceof ConfigurationSection) {
          ConfigurationSection catSec = (ConfigurationSection)rawNode;
@@ -328,21 +328,14 @@ public class CategoryGui {
          }
 
          return e.item.getType().name();
-      }, String.CASE_INSENSITIVE_ORDER).thenComparingDouble((CategoryEntry e) -> e.price);
-      Comparator<CategoryEntry> byPrice = Comparator.comparingDouble((CategoryEntry e) -> e.price).thenComparing((CategoryEntry e) -> {
-         ItemMeta meta = e.item.getItemMeta();
-         if (meta != null && meta.hasDisplayName()) {
-            return meta.getDisplayName();
-         }
-
-         return e.item.getType().name();
       }, String.CASE_INSENSITIVE_ORDER);
+      
       if (order == SortOrder.NAME) {
-         sorted.sort(byName);
+         sorted.sort(byName.thenComparingDouble((CategoryEntry e) -> e.price));
       } else if (order == SortOrder.HIGHEST_PRICE) {
-         sorted.sort(byPrice.reversed());
+         sorted.sort(Comparator.comparingDouble((CategoryEntry e) -> e.price).reversed().thenComparing(byName));
       } else {
-         sorted.sort(byPrice);
+         sorted.sort(Comparator.comparingDouble((CategoryEntry e) -> e.price).thenComparing(byName));
       }
 
       return sorted;

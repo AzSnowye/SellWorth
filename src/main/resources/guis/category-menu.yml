@@ -1,0 +1,49 @@
+﻿rows: 6
+title: 'Item %item%'
+
+titles:
+  CROPS: '&7Crops'
+  BONE: '&7Mob Drops'
+  DIAMOND: '&7Ores'
+  OAK_LEAVES: '&7Natural Items'
+  NETHERITE_HELMET: '&7Armor and Tools'
+  TROPICAL_FISH: '&7Fish'
+  BOOK: '&7Books'
+  BREWING_STAND: '&7Potions'
+  BRICK: '&7Blocks'
+
+previous-page-slot: 48
+previous-page:
+  material: ARROW
+  displayname: '&aSebelumnya'
+  lore:
+    - '&fHalaman Sebelumnya'
+
+next-page-slot: 50
+next-page:
+  material: ARROW
+  displayname: '&aBerikutnya'
+  lore:
+    - '&fHalaman Berikutnya'
+
+back-button:
+  slot: 45
+  material: RED_STAINED_GLASS_PANE
+  displayname: '&cKembali'
+  lore:
+    - '&fKlik untuk kembali'
+
+sort-button:
+  slot: 47
+  material: HOPPER
+  displayname: '&aUrutkan'
+  lore:
+    - '%highest%'
+    - '%lowest%'
+    - '%name%'
+
+item:
+  displayname: '&r%item%'
+  lore:
+    - '&fHarga: &#20f706$%item-value%'
+

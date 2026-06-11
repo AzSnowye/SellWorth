@@ -95,7 +95,7 @@ public class ItemPricesMenu implements Listener {
          this.disabledSet.add(s.toUpperCase(Locale.ROOT));
       }
 
-      ConfigurationSection menu = plugin.getConfig().getConfigurationSection("item-prices-menu");
+      ConfigurationSection menu = plugin.getConfigManager().getGuiConfig("item-prices-menu");
       this.titleTemplate = menu.getString("title");
       this.titlePrefix = this.titleTemplate.split("%page%", 2)[0];
       this.rows = menu.getInt("rows", 6);
@@ -321,20 +321,21 @@ public class ItemPricesMenu implements Listener {
       ViewTracker vt = this.plugin.getViewTracker();
       String filterCategory = vt.getFilter(player.getUniqueId());
       List<Entry<ItemStack, Double>> sorted = new ArrayList(this.masterEntries);
+      Comparator<Entry<ItemStack, Double>> byName = Comparator.comparing((e) -> {
+         ItemMeta m = ((ItemStack)e.getKey()).getItemMeta();
+         return m != null && m.hasDisplayName() ? m.getDisplayName() : this.prettify(((ItemStack)e.getKey()).getType());
+      }, String.CASE_INSENSITIVE_ORDER);
+
       switch(vt.getOrder(player.getUniqueId())) {
       case HIGH_TO_LOW:
-         sorted.sort((a, b) -> {
-            return Double.compare((Double)b.getValue(), (Double)a.getValue());
-         });
+         sorted.sort(Comparator.comparingDouble((Entry<ItemStack, Double> e) -> e.getValue()).reversed().thenComparing(byName));
          break;
       case LOW_TO_HIGH:
-         sorted.sort(Comparator.comparingDouble(Entry::getValue));
+         sorted.sort(Comparator.comparingDouble((Entry<ItemStack, Double> e) -> e.getValue()).thenComparing(byName));
          break;
       case NAME:
-         sorted.sort(Comparator.comparing((e) -> {
-            ItemMeta m = ((ItemStack)e.getKey()).getItemMeta();
-            return m != null && m.hasDisplayName() ? m.getDisplayName() : this.prettify(((ItemStack)e.getKey()).getType());
-         }, String.CASE_INSENSITIVE_ORDER));
+         sorted.sort(byName.thenComparingDouble(Entry::getValue));
+         break;
       }
 
       if (filterCategory != null && !filterCategory.equalsIgnoreCase("all")) {

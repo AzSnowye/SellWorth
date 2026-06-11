@@ -60,7 +60,7 @@ public class SellHistoryGui {
    }
 
    public void loadConfig() {
-      ConfigurationSection cfg = this.plugin.getConfig().getConfigurationSection("sellhistory-menu");
+      ConfigurationSection cfg = this.plugin.getConfigManager().getGuiConfig("sellhistory-menu");
       this.rows = cfg.getInt("rows", 6);
       this.size = this.rows * 9;
       String rawTitle = cfg.getString("title", "&8Sell history (Page %history-page%)");

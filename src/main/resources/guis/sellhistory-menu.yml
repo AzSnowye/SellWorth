@@ -1,0 +1,45 @@
+﻿title: '&7Riwayat Penjualan (Halaman %history-page%)'
+rows: 6
+sold-items:
+  displayname: '&r%Item-Name%'
+  lore:
+    - '&fTotal jumlah: &#34ee80%amount-sold%'
+    - '&fTotal harga: &#34ee80%price-sold%'
+history-back:
+  slot: 45
+  displayname: '&aKembali'
+  material: ARROW
+  lore:
+    - '&fKlik untuk kembali'
+history-next:
+  slot: 53
+  displayname: '&aBerikutnya'
+  material: ARROW
+  lore:
+    - '&fKlik untuk maju'
+
+history-sort:
+  material: HOPPER
+  slot: 50
+  displayname: '&aUrutkan'
+  NotCurrentColor: '&f'
+  CurrentColor: '&#34ee80'
+  lore:
+    - '&f- Harga Tertinggi'
+    - '&f- Harga Terendah'
+    - '&f- Nama'
+
+history-refresh:
+  material: ANVIL
+  slot: 49
+  displayname: '&aSegarkan'
+  lore:
+    - '&fKlik untuk menyegarkan'
+
+history-player:
+  material: PLAYER_HEAD
+  slot: 48
+  displayname: '&#34ee80%player%'
+  lore:
+    - '&fTotal terjual: &#34ee80%sellworth_total%'
+

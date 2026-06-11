@@ -39,11 +39,12 @@ public class InventoryClickListener implements Listener {
                p.playSound(p.getLocation(), clickSound, 1.0F, 1.0F);
                int slot = e.getRawSlot();
                int page = vt.getPage(uuid);
-               int prev = this.plugin.getConfig().getInt("item-prices-menu.previous.previous-page-slot");
-               int next = this.plugin.getConfig().getInt("item-prices-menu.next.next-page-slot");
-               int filter = this.plugin.getConfig().getInt("item-prices-menu.filter.slot");
-               int refresh = this.plugin.getConfig().getInt("item-prices-menu.refresh.slot");
-               int sort = this.plugin.getConfig().getInt("item-prices-menu.sort.slot");
+               org.bukkit.configuration.file.FileConfiguration ipmCfg = this.plugin.getConfigManager().getGuiConfig("item-prices-menu");
+               int prev = ipmCfg.getInt("previous.previous-page-slot");
+               int next = ipmCfg.getInt("next.next-page-slot");
+               int filter = ipmCfg.getInt("filter.slot");
+               int refresh = ipmCfg.getInt("refresh.slot");
+               int sort = ipmCfg.getInt("sort.slot");
                if (slot == prev && page > 1) {
                   this.suppressClear.add(uuid);
                   this.plugin.getItemPricesMenu().open(p, page - 1);
@@ -55,7 +56,7 @@ public class InventoryClickListener implements Listener {
                   this.suppressClear.add(uuid);
                   this.plugin.getItemPricesMenu().open(p, page);
                } else if (slot == filter) {
-                  List<String> options = this.plugin.getConfig().getStringList("item-prices-menu.filter.lore");
+                  List<String> options = ipmCfg.getStringList("filter.lore");
                   String cur = vt.getFilter(uuid);
                   int idx = options.indexOf(cur == null ? "all" : cur);
                   idx = (idx + 1) % options.size();

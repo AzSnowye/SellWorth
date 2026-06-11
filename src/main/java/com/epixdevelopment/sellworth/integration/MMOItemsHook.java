@@ -136,4 +136,29 @@ public class MMOItemsHook {
         }
         return null;
     }
+
+    public boolean isUnconfiguredMMOItem(ItemStack item) {
+        if (!enabled || item == null) {
+            return false;
+        }
+
+        try {
+            NBTItem nbtItem = NBTItem.get(item);
+            if (nbtItem != null && nbtItem.hasType()) {
+                String type = nbtItem.getType().toUpperCase(Locale.ROOT);
+                String id = nbtItem.getString("MMOITEMS_ITEM_ID");
+                if (id != null) {
+                    id = id.toUpperCase(Locale.ROOT);
+                    Map<String, Double> idMap = prices.get(type);
+                    if (idMap != null && idMap.containsKey(id)) {
+                        return false;
+                    }
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            // MMOItems or MythicLib not loaded properly, or version incompatibility
+        }
+        return false;
+    }
 }

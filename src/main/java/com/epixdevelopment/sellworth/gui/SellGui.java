@@ -40,7 +40,7 @@ public class SellGui {
    }
 
    private void loadSection(String section) {
-      ConfigurationSection cfg = this.plugin.getConfig().getConfigurationSection(section);
+      ConfigurationSection cfg = this.plugin.getConfigManager().getGuiConfig(section);
       if (cfg == null) {
          throw new IllegalStateException("Missing section '" + section + "' in config.yml");
       } else {
@@ -106,7 +106,7 @@ public class SellGui {
 
    private List<SellGui.LevelData> loadLevels() {
       List<SellGui.LevelData> lvlList = new ArrayList();
-      ConfigurationSection lvlSec = this.plugin.getConfig().getConfigurationSection("progress-menu.levels");
+      ConfigurationSection lvlSec = this.plugin.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
       if (lvlSec != null) {
          Iterator var3 = lvlSec.getKeys(false).iterator();
 
@@ -128,8 +128,8 @@ public class SellGui {
 
    private void populateBottomRow(String section, Inventory inv, List<SellGui.LevelData> lvlList, Player p) {
       if (this.plugin.isUseMultipliers()) {
-         List<String> items = this.plugin.getConfig().getStringList(section + ".items");
-         ConfigurationSection settings = this.plugin.getConfig().getConfigurationSection(section + ".item-settings");
+         List<String> items = this.plugin.getConfigManager().getGuiConfig(section).getStringList("items");
+         ConfigurationSection settings = this.plugin.getConfigManager().getGuiConfig(section).getConfigurationSection("item-settings");
          int defaultStart = (this.rows - 1) * 9;
 
          for(int i = 0; i < items.size(); ++i) {

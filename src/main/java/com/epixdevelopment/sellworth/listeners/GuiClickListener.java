@@ -33,7 +33,8 @@ public class GuiClickListener implements Listener {
          if (holder.getPage() == -1) {
             cat = holder.getCategoryKey();
             ProgressGui.CategoryIcon ico = (ProgressGui.CategoryIcon)this.plugin.getProgressGui().categoryIcons.get(cat);
-            prevSlot = cfg.getInt("progress-menu.back-button.slot", 45);
+            FileConfiguration progCfg = this.plugin.getConfigManager().getGuiConfig("progress-menu");
+            prevSlot = progCfg.getInt("back-button.slot", 45);
             if (ico != null && slot == ico.slot) {
                this.playClickSound(p, cfg);
                SchedulerUtil.runTaskLater(this.plugin, p, () -> (new CategoryGui(this.plugin, cat)).open(p, 0), 1L);
@@ -45,12 +46,13 @@ public class GuiClickListener implements Listener {
             cat = holder.getCategoryKey();
             int page = holder.getPage();
             CategoryGui.SortOrder sortOrder = holder.getSortOrder();
-            prevSlot = cfg.getInt("category-menu.previous-page-slot", 49);
-            int nextSlot = cfg.getInt("category-menu.next-page-slot", 51);
-            int backSlot = cfg.getInt("category-menu.back-button.slot", 45);
-            int rows = cfg.getInt("category-menu.rows", 6);
+            FileConfiguration catCfg = this.plugin.getConfigManager().getGuiConfig("category-menu");
+            prevSlot = catCfg.getInt("previous-page-slot", 49);
+            int nextSlot = catCfg.getInt("next-page-slot", 51);
+            int backSlot = catCfg.getInt("back-button.slot", 45);
+            int rows = catCfg.getInt("rows", 6);
             int perPage = (rows - 1) * 9;
-            int sortSlot = cfg.getInt("category-menu.sort-button.slot", 47);
+            int sortSlot = catCfg.getInt("sort-button.slot", 47);
             if (slot == sortSlot) {
                this.playClickSound(p, cfg);
                CategoryGui.SortOrder nextOrder = (new CategoryGui(this.plugin, cat)).nextSortOrder(sortOrder);

@@ -14,9 +14,7 @@ commands:
   sell:
     usage: /sell
     permission: sell.use
-  sellwand:
-    usage: /sellwand givesellwand <player> [time]
-    permission: sell.admin
+
   worth:
     usage: /worth [item] [amount]
     permission: sell.use
