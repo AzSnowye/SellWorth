@@ -24,7 +24,17 @@ public class SeriaBoosterHook {
     }
 
     public static double getSellMultiplier(UUID uuid) {
-        if (!enabled || uuid == null || seriaBooster == null) {
+        if (uuid == null) {
+            return 1.0;
+        }
+        if (seriaBooster == null) {
+            Plugin plugin = Bukkit.getPluginManager().getPlugin("SeriaBooster");
+            if (plugin != null && plugin.isEnabled() && plugin instanceof SeriaBooster) {
+                seriaBooster = (SeriaBooster) plugin;
+                enabled = true;
+            }
+        }
+        if (!enabled || seriaBooster == null) {
             return 1.0;
         }
         try {

@@ -828,14 +828,14 @@ public final class Sell extends JavaPlugin implements Listener {
    private void buildCategoryItems() {
       this.itemValues.clear();
       this.categoryItems.clear();
-      ConfigurationSection cats = this.getConfig().getConfigurationSection("categories");
+      ConfigurationSection cats = this.getConfigManager().getCategoriesConfig().getConfigurationSection("categories");
       if (cats != null) {
          String cat;
          ArrayList mats;
          label49: for (Iterator var2 = cats.getKeys(false).iterator(); var2.hasNext(); this.categoryItems.put(cat,
                mats)) {
             cat = (String) var2.next();
-            List<?> raw = this.getConfig().getList("categories." + cat);
+            List<?> raw = this.getConfigManager().getCategoriesConfig().getList("categories." + cat);
             mats = new ArrayList();
             if (raw != null) {
                Iterator var6 = raw.iterator();
@@ -879,7 +879,7 @@ public final class Sell extends JavaPlugin implements Listener {
 
    public double getPrice(String key) {
       return (Double) this.itemValues.getOrDefault(key.toLowerCase(Locale.ROOT),
-            this.getConfig().getDouble("default-value", 0.1D));
+            this.getConfigManager().getCategoriesConfig().getDouble("default-value", 0.1D));
    }
 
    public Map<String, Double> getItemValues() {
@@ -1218,12 +1218,12 @@ public final class Sell extends JavaPlugin implements Listener {
                       });
                   }).mapToDouble((e) -> {
                      return ((Sell.Stats) e.getValue()).revenue;
-                  }).sum();
+                  }).sum() * com.epixdevelopment.sellworth.integration.SeriaBoosterHook.getSellMultiplier(p.getUniqueId());
                   payout = categorized + uncategorized;
                } else {
                   payout = sold.values().stream().mapToDouble((s) -> {
                      return s.revenue;
-                  }).sum();
+                  }).sum() * com.epixdevelopment.sellworth.integration.SeriaBoosterHook.getSellMultiplier(p.getUniqueId());
                }
 
                Economy economy = this.getEconomy();
@@ -1400,7 +1400,7 @@ public final class Sell extends JavaPlugin implements Listener {
 
    public double getSellMultiplier(UUID u, String cat) {
       double multiplier = 1.0D;
-      ConfigurationSection levels = this.getConfig().getConfigurationSection("progress-menu.levels");
+      ConfigurationSection levels = this.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
       if (levels != null) {
          double soldInCategory = (Double) ((Map) this.soldByCategory.getOrDefault(u, Collections.emptyMap()))
                .getOrDefault(cat, 0.0D);
@@ -1424,7 +1424,7 @@ public final class Sell extends JavaPlugin implements Listener {
 
    public double getMaxMilestoneMultiplier(UUID u) {
       double maxMultiplier = 1.0D;
-      ConfigurationSection levels = this.getConfig().getConfigurationSection("progress-menu.levels");
+      ConfigurationSection levels = this.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
       if (levels != null) {
          for (String cat : this.categoryItems.keySet()) {
             double soldInCategory = (Double) ((Map) this.soldByCategory.getOrDefault(u, Collections.emptyMap()))
@@ -1560,6 +1560,58 @@ public final class Sell extends JavaPlugin implements Listener {
       private static Sell.SellNotifyMode[] $values() {
          return new Sell.SellNotifyMode[] { TITLE, ACTIONBAR, CHAT };
       }
+   }
+
+
+
+   public boolean resetCategoryProgress(UUID uuid, String category) {
+      Map<String, Double> categories = this.soldByCategory.get(uuid);
+      if (categories == null) {
+         categories = new HashMap<>();
+         this.soldByCategory.put(uuid, categories);
+      }
+      categories.put(category.toLowerCase(Locale.ROOT), 0.0D);
+      submitStorageTask(() -> {
+         try {
+            saveHistory();
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+      });
+      return true;
+   }
+
+   public boolean setCategoryLevelProgress(UUID uuid, String category, String levelKey) {
+      ConfigurationSection levels = this.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
+      if (levels == null) {
+         return false;
+      }
+      
+      String targetLevel = levelKey;
+      if (!levels.contains(targetLevel)) {
+         targetLevel = "level" + levelKey;
+      }
+      
+      if (!levels.contains(targetLevel)) {
+         return false;
+      }
+      
+      double amountNeeded = levels.getDouble(targetLevel + ".amountNeeded", 0.0D);
+      
+      Map<String, Double> categories = this.soldByCategory.get(uuid);
+      if (categories == null) {
+         categories = new HashMap<>();
+         this.soldByCategory.put(uuid, categories);
+      }
+      categories.put(category.toLowerCase(Locale.ROOT), amountNeeded);
+      submitStorageTask(() -> {
+         try {
+            saveHistory();
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+      });
+      return true;
    }
 
 

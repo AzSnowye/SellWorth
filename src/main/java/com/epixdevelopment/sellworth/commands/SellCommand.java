@@ -75,6 +75,49 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                   return true;
                }
             }
+         } else if (args.length == 3 && args[0].equalsIgnoreCase("reset")) {
+            if (!sender.hasPermission("sell.admin")) {
+               sender.sendMessage(Utils.formatColors("&cYou do not have permission to reset player data."));
+               return true;
+            }
+            String playerName = args[1];
+            String cat = args[2].toLowerCase(Locale.ROOT);
+            if (!this.plugin.categoryItems.containsKey(cat)) {
+               sender.sendMessage(Utils.formatColors("&cCategory &e" + cat + " &cnot found."));
+               return true;
+            }
+            OfflinePlayer offline = Bukkit.getOfflinePlayer(playerName);
+            if (!offline.hasPlayedBefore() && Bukkit.getPlayerExact(playerName) == null) {
+               sender.sendMessage(Utils.formatColors("&cPlayer &e" + playerName + " &cnot found."));
+               return true;
+            }
+            this.plugin.resetCategoryProgress(offline.getUniqueId(), cat);
+            sender.sendMessage(Utils.formatColors("&aSuccessfully reset progress of &e" + offline.getName() + " &afor category &e" + cat + "&a."));
+            return true;
+         } else if (args.length == 4 && args[0].equalsIgnoreCase("setlevel")) {
+            if (!sender.hasPermission("sell.admin")) {
+               sender.sendMessage(Utils.formatColors("&cYou do not have permission to modify player data."));
+               return true;
+            }
+            String playerName = args[1];
+            String cat = args[2].toLowerCase(Locale.ROOT);
+            String level = args[3];
+            if (!this.plugin.categoryItems.containsKey(cat)) {
+               sender.sendMessage(Utils.formatColors("&cCategory &e" + cat + " &cnot found."));
+               return true;
+            }
+            OfflinePlayer offline = Bukkit.getOfflinePlayer(playerName);
+            if (!offline.hasPlayedBefore() && Bukkit.getPlayerExact(playerName) == null) {
+               sender.sendMessage(Utils.formatColors("&cPlayer &e" + playerName + " &cnot found."));
+               return true;
+            }
+            boolean success = this.plugin.setCategoryLevelProgress(offline.getUniqueId(), cat, level);
+            if (success) {
+               sender.sendMessage(Utils.formatColors("&aSuccessfully set milestone level of &e" + offline.getName() + " &ain category &e" + cat + " &ato &e" + level + "&a."));
+            } else {
+               sender.sendMessage(Utils.formatColors("&cLevel &e" + level + " &cnot found."));
+            }
+            return true;
          } else if (args.length == 3 && args[0].equalsIgnoreCase("removeitem")) {
             if (!sender.hasPermission("sell.admin")) {
                sender.sendMessage(Utils.formatColors("&cYou do not have permission to modify prices."));
@@ -273,7 +316,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
       if (!sender.hasPermission("sell.admin")) {
          return Collections.emptyList();
       } else if (args.length == 1) {
-         return this.filter(Arrays.asList("reload", "addhanditem", "removeitem", "resetall"), args[0]);
+         return this.filter(Arrays.asList("reload", "addhanditem", "removeitem", "resetall", "reset", "setlevel"), args[0]);
       } else {
          if (args.length == 2) {
             if (args[0].equalsIgnoreCase("addhanditem")) {
@@ -294,7 +337,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                return this.filter(new ArrayList(cats.getKeys(false)), args[1]);
             }
 
-            if (args[0].equalsIgnoreCase("resetall")) {
+            if (args[0].equalsIgnoreCase("resetall") || args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel")) {
                List<String> onlineNames = new ArrayList();
                Iterator var6 = Bukkit.getOnlinePlayers().iterator();
 
@@ -307,25 +350,47 @@ public class SellCommand implements CommandExecutor, TabCompleter {
             }
          }
 
-         if (args.length == 3 && args[0].equalsIgnoreCase("removeitem")) {
-            String category = args[1].toLowerCase(Locale.ROOT);
-            List<Map<?, ?>> rawList = this.plugin.getConfigManager().getCategoriesConfig().getMapList("categories." + category);
-            List<String> keys = new ArrayList();
-            Iterator var6 = rawList.iterator();
+         if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel")) {
+               return this.filter(new ArrayList<>(this.plugin.categoryItems.keySet()), args[2]);
+            }
+            if (args[0].equalsIgnoreCase("removeitem")) {
+               String category = args[1].toLowerCase(Locale.ROOT);
+               List<Map<?, ?>> rawList = this.plugin.getConfigManager().getCategoriesConfig().getMapList("categories." + category);
+               List<String> keys = new ArrayList();
+               Iterator var6 = rawList.iterator();
 
-            while(var6.hasNext()) {
-               Map<?, ?> m = (Map)var6.next();
-               Iterator var8 = m.keySet().iterator();
+               while(var6.hasNext()) {
+                  Map<?, ?> m = (Map)var6.next();
+                  Iterator var8 = m.keySet().iterator();
 
-               while(var8.hasNext()) {
-                  Object k = var8.next();
-                  if (k != null) {
-                     keys.add(String.valueOf(k));
+                  while(var8.hasNext()) {
+                     Object k = var8.next();
+                     if (k != null) {
+                        keys.add(String.valueOf(k));
+                     }
                   }
                }
-            }
 
-            return this.filter(keys, args[2]);
+               return this.filter(keys, args[2]);
+            }
+         }
+
+         if (args.length == 4) {
+            if (args[0].equalsIgnoreCase("setlevel")) {
+               ConfigurationSection levels = this.plugin.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
+               if (levels != null) {
+                  List<String> levelKeys = new ArrayList<>(levels.getKeys(false));
+                  List<String> numericLevels = new ArrayList<>();
+                  for (String k : levelKeys) {
+                     if (k.startsWith("level")) {
+                        numericLevels.add(k.substring(5));
+                     }
+                  }
+                  levelKeys.addAll(numericLevels);
+                  return this.filter(levelKeys, args[3]);
+               }
+            }
          }
 
          return Collections.emptyList();
