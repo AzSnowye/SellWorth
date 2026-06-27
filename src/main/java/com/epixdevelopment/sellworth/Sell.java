@@ -17,6 +17,7 @@ import com.epixdevelopment.sellworth.integration.SellPlaceholderExpansion;
 import com.epixdevelopment.sellworth.integration.VaultMoneyPlaceholder;
 import com.epixdevelopment.sellworth.integration.MMOItemsHook;
 import com.epixdevelopment.sellworth.integration.CustomFishingHook;
+import com.epixdevelopment.sellworth.integration.EGensHook;
 import com.epixdevelopment.sellworth.listeners.ChatInputListener;
 import com.epixdevelopment.sellworth.listeners.CleanupListener;
 import com.epixdevelopment.sellworth.listeners.GuiClickListener;
@@ -137,6 +138,11 @@ public final class Sell extends JavaPlugin implements Listener {
    private com.epixdevelopment.sellworth.util.TransactionLog transactionLog;
    private MMOItemsHook mmoItemsHook;
    private CustomFishingHook customFishingHook;
+   private EGensHook egensHook;
+
+   public EGensHook getEGensHook() {
+      return this.egensHook;
+   }
 
    public MMOItemsHook getMMOItemsHook() {
       return this.mmoItemsHook;
@@ -443,6 +449,7 @@ public final class Sell extends JavaPlugin implements Listener {
 
          this.mmoItemsHook = new MMOItemsHook(this);
          this.customFishingHook = new CustomFishingHook(this);
+         this.egensHook = new EGensHook(this);
 
          this.viewTracker = new ViewTracker();
          this.historyTracker = new HistoryTracker();
@@ -655,6 +662,9 @@ public final class Sell extends JavaPlugin implements Listener {
          }
          if (customFishingHook != null) {
             customFishingHook.checkPlugin();
+         }
+         if (egensHook != null) {
+            egensHook.checkPlugin();
          }
 
          setupSaveFile();
@@ -961,7 +971,8 @@ public final class Sell extends JavaPlugin implements Listener {
                   mat = item.getType().name();
                   isShulkerBox = mat.endsWith("_SHULKER_BOX") || item.getType() == Material.SHULKER_BOX;
                   boolean mmoItemUnsellable = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item);
-                  if ((disabledSet.contains(mat) || mmoItemUnsellable) && !isShulkerBox) {
+                  boolean egensGenerator = this.egensHook != null && this.egensHook.isGeneratorItem(item);
+                  if ((disabledSet.contains(mat) || mmoItemUnsellable || egensGenerator) && !isShulkerBox) {
                      Map<Integer, ItemStack> leftover = p.getInventory().addItem(new ItemStack[] { item });
                      leftover.values().forEach((d) -> {
                         p.getWorld().dropItemNaturally(p.getLocation(), d);
@@ -991,7 +1002,8 @@ public final class Sell extends JavaPlugin implements Listener {
                   BlockState var56;
                   int lvl;
                   boolean mmoItemUnsellableBox = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item);
-                  if (isShulkerBox && (disabledSet.contains(mat) || mmoItemUnsellableBox)) {
+                  boolean egensGeneratorBox = this.egensHook != null && this.egensHook.isGeneratorItem(item);
+                  if (isShulkerBox && (disabledSet.contains(mat) || mmoItemUnsellableBox || egensGeneratorBox)) {
                      im = item.getItemMeta();
                      if (im instanceof BlockStateMeta) {
                         bsm = (BlockStateMeta) im;
@@ -1006,8 +1018,9 @@ public final class Sell extends JavaPlugin implements Listener {
                               ItemStack inside = var61[var67];
                               if (inside != null && !inside.getType().isAir()) {
                                  String insideMat = inside.getType().name();
-                                 boolean insideUnsellable = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(inside);
-                                 if (!disabledSet.contains(insideMat) && !insideUnsellable) {
+                                  boolean insideUnsellable = this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(inside);
+                                  boolean insideEgensGen = this.egensHook != null && this.egensHook.isGeneratorItem(inside);
+                                  if (!disabledSet.contains(insideMat) && !insideUnsellable && !insideEgensGen) {
                                     ItemMeta insideMeta = inside.getItemMeta();
                                     if (inside.getType() == Material.ENCHANTED_BOOK
                                           && insideMeta instanceof EnchantmentStorageMeta) {
@@ -1151,7 +1164,7 @@ public final class Sell extends JavaPlugin implements Listener {
                            }
                         }
                      }
-                  } else if (!disabledSet.contains(mat) && !(this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item))) {
+                  } else if (!disabledSet.contains(mat) && !(this.mmoItemsHook != null && this.mmoItemsHook.isUnconfiguredMMOItem(item)) && !(this.egensHook != null && this.egensHook.isGeneratorItem(item))) {
                      im = item.getItemMeta();
                      if (item.getType() == Material.ENCHANTED_BOOK && im instanceof EnchantmentStorageMeta) {
                         EnchantmentStorageMeta esm = (EnchantmentStorageMeta) im;
@@ -1279,7 +1292,13 @@ public final class Sell extends JavaPlugin implements Listener {
    }
 
    public double calculateItemWorth(org.bukkit.entity.Player player, ItemStack item) {
-      if (this.mmoItemsHook != null && this.mmoItemsHook.isEnabled()) {
+       if (this.egensHook != null && this.egensHook.isEnabled()) {
+          Double egensPrice = this.egensHook.getPrice(item);
+          if (egensPrice != null) {
+             return egensPrice * (double) item.getAmount();
+          }
+       }
+       if (this.mmoItemsHook != null && this.mmoItemsHook.isEnabled()) {
          Double mmoPrice = this.mmoItemsHook.getPrice(item);
          if (mmoPrice != null) {
             return mmoPrice * (double) item.getAmount();

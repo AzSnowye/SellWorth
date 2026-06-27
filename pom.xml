@@ -124,6 +124,12 @@
             <version>1.6.2-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.epromite.egens</groupId>
+            <artifactId>egens-plugin</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
