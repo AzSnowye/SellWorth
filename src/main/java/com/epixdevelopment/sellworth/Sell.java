@@ -1600,6 +1600,27 @@ public final class Sell extends JavaPlugin implements Listener {
       return true;
    }
 
+   public boolean resetCategoryLevelProgress(UUID uuid, String category) {
+      if (category.equalsIgnoreCase("all")) {
+         this.soldByCategory.remove(uuid);
+      } else {
+         Map<String, Double> categories = this.soldByCategory.get(uuid);
+         if (categories != null) {
+            categories.remove(category.toLowerCase(Locale.ROOT));
+         }
+      }
+      this.getServer().getScheduler().runTaskAsynchronously(this, () -> {
+         try {
+            if (this.dataStore != null) {
+               this.dataStore.saveData(uuid, this.totalSold.getOrDefault(uuid, 0.0), this.soldByCategory.getOrDefault(uuid, new HashMap<>()));
+            }
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+      });
+      return true;
+   }
+
    public boolean setCategoryLevelProgress(UUID uuid, String category, String levelKey) {
       ConfigurationSection levels = this.getConfigManager().getGuiConfig("progress-menu").getConfigurationSection("levels");
       if (levels == null) {

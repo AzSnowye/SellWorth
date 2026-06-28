@@ -118,6 +118,25 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                sender.sendMessage(Utils.formatColors("&cLevel &e" + level + " &cnot found."));
             }
             return true;
+         } else if (args.length == 3 && args[0].equalsIgnoreCase("resetmilestone")) {
+            if (!sender.hasPermission("sell.admin")) {
+               sender.sendMessage(Utils.formatColors("&cYou do not have permission to modify milestones."));
+               return true;
+            }
+            String playerName = args[1];
+            String cat = args[2].toLowerCase(Locale.ROOT);
+            if (!cat.equals("all") && !this.plugin.categoryItems.containsKey(cat)) {
+               sender.sendMessage(Utils.formatColors("&cCategory &e" + cat + " &cnot found."));
+               return true;
+            }
+            OfflinePlayer offline = Bukkit.getOfflinePlayer(playerName);
+            if (!offline.hasPlayedBefore() && Bukkit.getPlayerExact(playerName) == null) {
+               sender.sendMessage(Utils.formatColors("&cPlayer &e" + playerName + " &cnot found."));
+               return true;
+            }
+            this.plugin.resetCategoryLevelProgress(offline.getUniqueId(), cat);
+            sender.sendMessage(Utils.formatColors("&aSuccessfully reset milestone of &e" + offline.getName() + " &ain category &e" + cat + "&a."));
+            return true;
          } else if (args.length == 3 && args[0].equalsIgnoreCase("removeitem")) {
             if (!sender.hasPermission("sell.admin")) {
                sender.sendMessage(Utils.formatColors("&cYou do not have permission to modify prices."));
@@ -316,7 +335,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
       if (!sender.hasPermission("sell.admin")) {
          return Collections.emptyList();
       } else if (args.length == 1) {
-         return this.filter(Arrays.asList("reload", "addhanditem", "removeitem", "resetall", "reset", "setlevel"), args[0]);
+         return this.filter(Arrays.asList("reload", "addhanditem", "removeitem", "resetall", "reset", "setlevel", "resetmilestone"), args[0]);
       } else {
          if (args.length == 2) {
             if (args[0].equalsIgnoreCase("addhanditem")) {
@@ -337,7 +356,7 @@ public class SellCommand implements CommandExecutor, TabCompleter {
                return this.filter(new ArrayList(cats.getKeys(false)), args[1]);
             }
 
-            if (args[0].equalsIgnoreCase("resetall") || args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel")) {
+            if (args[0].equalsIgnoreCase("resetall") || args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("resetmilestone")) {
                List<String> onlineNames = new ArrayList();
                Iterator var6 = Bukkit.getOnlinePlayers().iterator();
 
@@ -351,8 +370,12 @@ public class SellCommand implements CommandExecutor, TabCompleter {
          }
 
          if (args.length == 3) {
-            if (args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel")) {
-               return this.filter(new ArrayList<>(this.plugin.categoryItems.keySet()), args[2]);
+            if (args[0].equalsIgnoreCase("reset") || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("resetmilestone")) {
+               List<String> list = new ArrayList<>(this.plugin.categoryItems.keySet());
+               if (args[0].equalsIgnoreCase("resetmilestone")) {
+                   list.add("all");
+               }
+               return this.filter(list, args[2]);
             }
             if (args[0].equalsIgnoreCase("removeitem")) {
                String category = args[1].toLowerCase(Locale.ROOT);

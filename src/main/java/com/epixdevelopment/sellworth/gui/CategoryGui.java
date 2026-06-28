@@ -234,6 +234,38 @@ public class CategoryGui {
                ItemStack stk = new ItemStack(mat);
                this.applyDisplayAndLore(stk, entryKey, price, (String)null);
                this.entries.add(new CategoryEntry(stk, price));
+            } else if (matName.startsWith("customfishing_")) {
+               String cfId = matName.substring("customfishing_".length());
+               ItemStack cfItem = null;
+               try {
+                  cfItem = net.momirealms.customfishing.api.BukkitCustomFishingPlugin.getInstance().getItemManager().buildItem(cfId, null);
+               } catch (Throwable t) {
+                  try {
+                     cfItem = net.momirealms.customfishing.api.BukkitCustomFishingPlugin.getInstance().getItemManager().buildItem(cfId);
+                  } catch (Throwable t2) {}
+               }
+               if (cfItem != null) {
+                  this.applyDisplayAndLore(cfItem, entryKey, price, null);
+                  this.entries.add(new CategoryEntry(cfItem, price));
+               } else {
+                  this.plugin.getLogger().warning("Unknown customfishing item '" + cfId + "' for key '" + entryKey + "' in categories." + this.categoryKey);
+               }
+            } else if (matName.startsWith("mmoitems_")) {
+               String[] parts = matName.split("_", 3);
+               if (parts.length == 3) {
+                  String type = parts[1].toUpperCase(Locale.ROOT);
+                  String id = parts[2].toUpperCase(Locale.ROOT);
+                  ItemStack mmoItem = null;
+                  try {
+                     mmoItem = net.Indyuce.mmoitems.MMOItems.plugin.getItem(net.Indyuce.mmoitems.api.Type.get(type), id);
+                  } catch (Throwable t) {}
+                  if (mmoItem != null) {
+                     this.applyDisplayAndLore(mmoItem, entryKey, price, null);
+                     this.entries.add(new CategoryEntry(mmoItem, price));
+                  } else {
+                     this.plugin.getLogger().warning("Unknown mmoitem '" + matName + "' for key '" + entryKey + "' in categories." + this.categoryKey);
+                  }
+               }
             } else {
                Matcher potM = POTION_PATTERN.matcher(entryKey);
                if (potM.matches()) {

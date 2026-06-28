@@ -976,7 +976,6 @@ categories:
     - nautilus_shell-value: 100.0
     - saddle-value: 500.0
     - lily_pad-value: 4.0
-    - leather-value: 40.0
     - cooked_salmon-value: 2.0
     - axolotl_bucket-value: 25.0
     - tadpole_bucket-value: 100.0
