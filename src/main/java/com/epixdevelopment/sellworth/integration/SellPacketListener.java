@@ -242,6 +242,13 @@ public class SellPacketListener implements PacketListener, Listener {
                   Double egensPrice = egensHook.getPrice(original);
                   if (egensPrice != null) {
                      double egensTotal = egensPrice * original.getAmount();
+                     String catKey = this.plugin.getItemKey(original).toUpperCase(Locale.ROOT);
+                     String cat = this.itemCategoryCache.get(catKey);
+                     if (cat == null) {
+                        cat = this.itemCategoryCache.get(original.getType().name());
+                     }
+                     double egensMult = cat != null ? this.plugin.getSellMultiplier(playerId, cat) : 1.0D;
+                     egensTotal *= egensMult;
                      ItemStack item = original.clone();
                      ItemMeta meta = item.getItemMeta();
                      if (meta == null) return original;
@@ -270,6 +277,13 @@ public class SellPacketListener implements PacketListener, Listener {
                Double cfPrice = cfHook.getPrice(cfPlayer, original);
                if (cfPrice != null) {
                   double cfTotal = cfPrice * original.getAmount();
+                  String catKey = this.plugin.getItemKey(original).toUpperCase(Locale.ROOT);
+                  String cat = this.itemCategoryCache.get(catKey);
+                  if (cat == null) {
+                     cat = this.itemCategoryCache.get(original.getType().name());
+                  }
+                  double cfMult = cat != null ? this.plugin.getSellMultiplier(playerId, cat) : 1.0D;
+                  cfTotal *= cfMult;
                   ItemStack item = original.clone();
                   ItemMeta meta = item.getItemMeta();
                   if (meta == null) return original;
@@ -357,7 +371,16 @@ public class SellPacketListener implements PacketListener, Listener {
                      }
                   } else {
                      String pKey = this.getPotionKey(item);
-                     baseVal = pKey != null ? this.plugin.getPrice(pKey + "-value") : (Double)this.values.getOrDefault(item.getType(), this.defaultValue);
+                     if (pKey != null) {
+                        baseVal = this.plugin.getPrice(pKey + "-value");
+                     } else {
+                        String customKey = this.plugin.getItemKey(item);
+                        if (customKey != null && !customKey.equalsIgnoreCase(item.getType().name())) {
+                           baseVal = this.plugin.getPrice(customKey + "-value");
+                        } else {
+                           baseVal = (Double)this.values.getOrDefault(item.getType(), this.defaultValue);
+                        }
+                     }
                   }
 
                   double enchVal = 0.0D;
@@ -383,7 +406,11 @@ public class SellPacketListener implements PacketListener, Listener {
 
                   int amt = item.getAmount();
                   raw = (baseVal + enchVal) * (double)amt;
-                  String cat = this.itemCategoryCache.get(item.getType().name());
+                  String catKey = this.plugin.getItemKey(item).toUpperCase(Locale.ROOT);
+                  String cat = this.itemCategoryCache.get(catKey);
+                  if (cat == null) {
+                     cat = this.itemCategoryCache.get(item.getType().name());
+                  }
                   insideRaw = cat != null ? this.plugin.getSellMultiplier(playerId, cat) : 1.0D;
                   totalValue = raw * insideRaw;
                }

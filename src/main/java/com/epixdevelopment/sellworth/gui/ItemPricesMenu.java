@@ -241,6 +241,45 @@ public class ItemPricesMenu implements Listener {
          }
       }
 
+      // MMOItems loop
+      var19 = this.plugin.getItemValues().keySet().iterator();
+      while(var19.hasNext()) {
+         rawKey = (String)var19.next();
+         if (rawKey.endsWith("-value") && !seen.contains(rawKey)) {
+            if (rawKey.startsWith("mmoitems_")) {
+               String mmoKey = rawKey.substring("mmoitems_".length(), rawKey.length() - 6);
+               int firstUnderscore = mmoKey.indexOf('_');
+               if (firstUnderscore != -1) {
+                  String type = mmoKey.substring(0, firstUnderscore);
+                  String id = mmoKey.substring(firstUnderscore + 1);
+                  if (this.plugin.getMMOItemsHook() != null) {
+                     ItemStack mmoItem = this.plugin.getMMOItemsHook().getItem(type, id);
+                     if (mmoItem != null) {
+                        // Set the category tag for GUI sorting/filtering
+                        String category = null;
+                        String searchKey = ("mmoitems_" + type + "_" + id).toUpperCase(Locale.ROOT);
+                        for (Entry<String, List<String>> catEntry : this.plugin.categoryItems.entrySet()) {
+                           if (catEntry.getValue().contains(searchKey)) {
+                              category = catEntry.getKey();
+                              break;
+                           }
+                        }
+                        if (category != null) {
+                           ItemMeta mmoMeta = mmoItem.getItemMeta();
+                           if (mmoMeta != null) {
+                              mmoMeta.getPersistentDataContainer().set(this.PDC_CATEGORY, PersistentDataType.STRING, category);
+                              mmoItem.setItemMeta(mmoMeta);
+                           }
+                        }
+                        list.add(new SimpleEntry(mmoItem, this.plugin.getPrice(rawKey)));
+                        seen.add(rawKey);
+                     }
+                  }
+               }
+            }
+         }
+      }
+
       var19 = this.plugin.getItemValues().keySet().iterator();
 
       while(true) {
@@ -474,6 +513,10 @@ public class ItemPricesMenu implements Listener {
       ItemMeta meta = is.getItemMeta();
       PersistentDataContainer pdc = meta != null ? meta.getPersistentDataContainer() : null;
       String catTag = pdc != null && pdc.has(this.PDC_CATEGORY, PersistentDataType.STRING) ? (String)pdc.get(this.PDC_CATEGORY, PersistentDataType.STRING) : null;
+      if (catTag != null && catTag.equalsIgnoreCase(filterCategory)) {
+         return true;
+      }
+
       if ("book".equalsIgnoreCase(filterCategory)) {
          if ("book".equalsIgnoreCase(catTag)) {
             return true;
@@ -499,7 +542,8 @@ public class ItemPricesMenu implements Listener {
       }
 
       if (allowed != null && !allowed.isEmpty()) {
-         if (allowed.contains(type)) {
+         String customKey = this.plugin.getItemKey(is).toUpperCase(Locale.ROOT);
+         if (allowed.contains(customKey) || allowed.contains(type)) {
             return true;
          }
 

@@ -140,6 +140,10 @@ public final class Sell extends JavaPlugin implements Listener {
    private CustomFishingHook customFishingHook;
    private EGensHook egensHook;
 
+   public boolean hasPrice(String key) {
+      return this.itemValues.containsKey(key.toLowerCase(Locale.ROOT));
+   }
+
    public EGensHook getEGensHook() {
       return this.egensHook;
    }
@@ -535,6 +539,7 @@ public final class Sell extends JavaPlugin implements Listener {
          }
 
          com.epixdevelopment.sellworth.integration.SeriaBoosterHook.init();
+         com.epixdevelopment.sellworth.integration.SuperiorSkyblockHook.init();
 
          if (getServer().getPluginManager().getPlugin("AxSellwands") != null) {
             getServer().getPluginManager().registerEvents(new com.epixdevelopment.sellworth.integration.AxSellwandsListener(this), this);
@@ -1315,7 +1320,10 @@ public final class Sell extends JavaPlugin implements Listener {
       double base;
       String baseKey;
       String var10000;
-      if (item.getType() == Material.SPAWNER && im instanceof BlockStateMeta) {
+      String customKey = this.getItemKey(item);
+      if (customKey != null && !customKey.equalsIgnoreCase(item.getType().name()) && this.hasPrice(customKey + "-value")) {
+         base = this.getPrice(customKey + "-value");
+      } else if (item.getType() == Material.SPAWNER && im instanceof BlockStateMeta) {
          BlockStateMeta bsm = (BlockStateMeta) im;
          BlockState var17 = bsm.getBlockState();
          if (var17 instanceof CreatureSpawner) {
@@ -1438,7 +1446,7 @@ public final class Sell extends JavaPlugin implements Listener {
          }
       }
 
-      return multiplier * com.epixdevelopment.sellworth.integration.SeriaBoosterHook.getSellMultiplier(u);
+      return multiplier * com.epixdevelopment.sellworth.integration.SeriaBoosterHook.getSellMultiplier(u) * com.epixdevelopment.sellworth.integration.SuperiorSkyblockHook.getSellMultiplier(u);
    }
 
    public double getMaxMilestoneMultiplier(UUID u) {
@@ -1611,9 +1619,9 @@ public final class Sell extends JavaPlugin implements Listener {
       }
       this.getServer().getScheduler().runTaskAsynchronously(this, () -> {
          try {
-            if (this.dataStore != null) {
-               this.dataStore.saveData(uuid, this.totalSold.getOrDefault(uuid, 0.0), this.soldByCategory.getOrDefault(uuid, new HashMap<>()));
-            }
+             if (this.dataStore != null) {
+                this.dataStore.saveAll(this.totalSold, this.soldByCategory, this.itemHistory, this.toggleWorthDisabled);
+             }
          } catch (Exception e) {
             e.printStackTrace();
          }

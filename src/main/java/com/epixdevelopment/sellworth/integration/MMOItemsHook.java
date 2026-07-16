@@ -137,6 +137,24 @@ public class MMOItemsHook {
         return null;
     }
 
+    public ItemStack getItem(String type, String id) {
+        if (!enabled) return null;
+        try {
+            Class<?> typeClass = Class.forName("io.lumine.mythic.mmoitems.api.Type");
+            Object mmoType = typeClass.getMethod("get", String.class).invoke(null, type.toUpperCase(Locale.ROOT));
+            if (mmoType != null) {
+                Class<?> mmoItemsClass = Class.forName("io.lumine.mythic.mmoitems.MMOItems");
+                Object pluginInstance = mmoItemsClass.getField("plugin").get(null);
+                return (ItemStack) pluginInstance.getClass()
+                    .getMethod("getItem", typeClass, String.class)
+                    .invoke(pluginInstance, mmoType, id.toUpperCase(Locale.ROOT));
+            }
+        } catch (Throwable t) {
+            // ignore
+        }
+        return null;
+    }
+
     public boolean isUnconfiguredMMOItem(ItemStack item) {
         if (!enabled || item == null) {
             return false;
@@ -151,6 +169,11 @@ public class MMOItemsHook {
                     id = id.toUpperCase(Locale.ROOT);
                     Map<String, Double> idMap = prices.get(type);
                     if (idMap != null && idMap.containsKey(id)) {
+                        return false;
+                    }
+                    // Check if registered under categories.yml
+                    String categoryKey = "mmoitems_" + type.toLowerCase(Locale.ROOT) + "_" + id.toLowerCase(Locale.ROOT) + "-value";
+                    if (plugin.hasPrice(categoryKey)) {
                         return false;
                     }
                     return true;

@@ -1,4 +1,4 @@
-﻿# Logging settings
+# Logging settings
 log:
   # Define whether transactions will be logged to the console/main server log
   toConsole: true

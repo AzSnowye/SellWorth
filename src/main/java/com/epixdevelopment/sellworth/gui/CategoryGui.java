@@ -237,13 +237,21 @@ public class CategoryGui {
             } else if (matName.startsWith("customfishing_")) {
                String cfId = matName.substring("customfishing_".length());
                ItemStack cfItem = null;
-               try {
-                  cfItem = net.momirealms.customfishing.api.BukkitCustomFishingPlugin.getInstance().getItemManager().buildItem(cfId, null);
-               } catch (Throwable t) {
-                  try {
-                     cfItem = net.momirealms.customfishing.api.BukkitCustomFishingPlugin.getInstance().getItemManager().buildItem(cfId);
-                  } catch (Throwable t2) {}
-               }
+                try {
+                   Object pluginInstance = Class.forName("net.momirealms.customfishing.api.BukkitCustomFishingPlugin").getMethod("getInstance").invoke(null);
+                   Object itemManager = pluginInstance.getClass().getMethod("getItemManager").invoke(pluginInstance);
+                   try {
+                      cfItem = (ItemStack) itemManager.getClass().getMethod("buildAny", Class.forName("net.momirealms.customfishing.api.mechanic.context.Context"), String.class).invoke(itemManager, null, cfId);
+                   } catch (Throwable t) {
+                      try {
+                         cfItem = (ItemStack) itemManager.getClass().getMethod("buildItem", String.class, Class.forName("org.bukkit.entity.Player")).invoke(itemManager, cfId, null);
+                      } catch (Throwable t2) {
+                         try {
+                            cfItem = (ItemStack) itemManager.getClass().getMethod("buildItem", String.class).invoke(itemManager, cfId);
+                         } catch (Throwable t3) {}
+                      }
+                   }
+                } catch (Throwable t) {}
                if (cfItem != null) {
                   this.applyDisplayAndLore(cfItem, entryKey, price, null);
                   this.entries.add(new CategoryEntry(cfItem, price));

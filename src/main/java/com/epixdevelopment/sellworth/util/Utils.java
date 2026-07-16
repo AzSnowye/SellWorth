@@ -16,6 +16,21 @@ public final class Utils {
       if (input == null) {
          return null;
       } else {
+         // Convert MiniMessage style hex colors: <#rrggbb> -> &#rrggbb
+         input = input.replaceAll("(?i)<#([A-Fa-f0-9]{6})>", "&#$1");
+         input = input.replaceAll("(?i)</#[A-Fa-f0-9]{6}>", "");
+
+         // Convert MiniMessage style formatting tags:
+         input = input.replaceAll("(?i)<bold>|<b>", "&l");
+         input = input.replaceAll("(?i)<italic>|<i>", "&o");
+         input = input.replaceAll("(?i)<underlined>|<u>", "&n");
+         input = input.replaceAll("(?i)<strikethrough>|<s>", "&m");
+         input = input.replaceAll("(?i)<obfuscated>|<obf>", "&k");
+         input = input.replaceAll("(?i)<reset>", "&r");
+
+         // Clean up closing tags
+         input = input.replaceAll("(?i)</bold>|</b>|</italic>|</i>|</underlined>|</u>|</strikethrough>|</s>|</obfuscated>|</obf>|</color>|</colour>", "");
+
          Matcher matcher = HEX_PATTERN.matcher(input);
          StringBuffer buffer = new StringBuffer(input.length() + 32);
 

@@ -104,7 +104,7 @@
             <artifactId>AxSellwands</artifactId>
             <version>1.14.1</version>
             <scope>system</scope>
-            <systemPath>d:/seria/plugins/SeriaBooster/libs/AxSellwands-1.14.1.jar</systemPath>
+            <systemPath>d:/seria plugins/seria plugins/SeriaBooster/libs/AxSellwands-1.14.1.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>net.momirealms</groupId>

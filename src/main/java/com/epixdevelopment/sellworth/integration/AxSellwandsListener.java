@@ -20,7 +20,7 @@ public class AxSellwandsListener implements Listener {
         UUID uuid = event.getPlayer().getUniqueId();
         double originalMoney = event.getMoneyMade();
         
-        double boosterMultiplier = SeriaBoosterHook.getSellMultiplier(uuid);
+        double boosterMultiplier = SeriaBoosterHook.getSellMultiplier(uuid) * SuperiorSkyblockHook.getSellMultiplier(uuid);
         double maxMilestone = plugin.getMaxMilestoneMultiplier(uuid);
         
         double newMoney = originalMoney * boosterMultiplier * maxMilestone;
